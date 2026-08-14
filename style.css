@@ -612,3 +612,57 @@ textarea {
 
     cursor: not-allowed;
 }
+
+/* =========================================
+   PERFIL DEL JUGADOR
+========================================= */
+
+.player-profile {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin: 15px 0;
+
+    padding: 10px 14px;
+
+    background: #242424;
+
+    border: 1px solid #3d3d3d;
+
+    border-radius: 8px;
+
+}
+
+#playerNameDisplay {
+
+    font-weight: bold;
+
+    color: #eee;
+
+}
+
+#changeNameButton {
+
+    border: 0;
+
+    border-radius: 5px;
+
+    padding: 6px 10px;
+
+    background: #3b3b3b;
+
+    color: white;
+
+    cursor: pointer;
+
+}
+
+#changeNameButton:hover {
+
+    background: #505050;
+
+}
