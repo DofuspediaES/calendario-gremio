@@ -1456,6 +1456,38 @@ eventForm.addEventListener(
     }
 );
 
+// ============================================
+// SERVICE WORKER
+// ============================================
+
+if (
+    "serviceWorker" in navigator
+) {
+
+    navigator.serviceWorker
+        .register("sw.js")
+        .then(
+            registration => {
+
+                console.log(
+                    "Service Worker registrado:",
+                    registration.scope
+                );
+
+            }
+        )
+        .catch(
+            error => {
+
+                console.error(
+                    "Error registrando Service Worker:",
+                    error
+                );
+
+            }
+        );
+
+}
 
 // ============================================
 // INICIAR
@@ -1487,6 +1519,5 @@ async function startApp() {
     await loadEvents();
 
 }
-
 
 startApp();
