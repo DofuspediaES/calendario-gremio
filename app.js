@@ -1,12 +1,12 @@
 // ============================================
 // CALENDARIO DEL GREMIO
-// PARTE 2
+// PARTE 3
+// PARTICIPANTES
+// ============================================
+
+
+// ============================================
 // SUPABASE
-// ============================================
-
-
-// ============================================
-// CONFIGURACIÓN SUPABASE
 // ============================================
 
 const SUPABASE_URL =
@@ -65,9 +65,12 @@ const eventForm =
 // VARIABLES
 // ============================================
 
-let currentDate = new Date();
+let currentDate =
+    new Date();
 
 let events = [];
+
+let participants = [];
 
 let currentUser = null;
 
@@ -94,7 +97,7 @@ function showTimezone() {
 
 
 // ============================================
-// INICIAR USUARIO ANÓNIMO
+// USUARIO
 // ============================================
 
 async function loginAnonymous() {
@@ -102,8 +105,9 @@ async function loginAnonymous() {
     const {
         data,
         error
-    } = await supabaseClient.auth
-        .signInAnonymously();
+    } =
+        await supabaseClient.auth
+            .signInAnonymously();
 
 
     if (error) {
@@ -146,21 +150,22 @@ async function loadEvents() {
     const {
         data,
         error
-    } = await supabaseClient
-        .from("events")
-        .select("*")
-        .order(
-            "event_date",
-            {
-                ascending: true
-            }
-        )
-        .order(
-            "event_time",
-            {
-                ascending: true
-            }
-        );
+    } =
+        await supabaseClient
+            .from("events")
+            .select("*")
+            .order(
+                "event_date",
+                {
+                    ascending: true
+                }
+            )
+            .order(
+                "event_time",
+                {
+                    ascending: true
+                }
+            );
 
 
     if (error) {
@@ -168,10 +173,6 @@ async function loadEvents() {
         console.error(
             "Error cargando eventos:",
             error
-        );
-
-        alert(
-            "No se pudieron cargar los eventos."
         );
 
         return;
@@ -183,6 +184,9 @@ async function loadEvents() {
         data || [];
 
 
+    await loadParticipants();
+
+
     renderCalendar();
 
     renderEvents();
@@ -191,7 +195,40 @@ async function loadEvents() {
 
 
 // ============================================
-// FORMATEAR FECHA
+// CARGAR PARTICIPANTES
+// ============================================
+
+async function loadParticipants() {
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("event_participants")
+            .select("*");
+
+
+    if (error) {
+
+        console.error(
+            "Error cargando participantes:",
+            error
+        );
+
+        return;
+
+    }
+
+
+    participants =
+        data || [];
+
+}
+
+
+// ============================================
+// FECHA
 // ============================================
 
 function formatDate(date) {
@@ -209,7 +246,7 @@ function formatDate(date) {
 
 
 // ============================================
-// FORMATEAR HORA
+// HORA
 // ============================================
 
 function formatTime(time) {
@@ -217,7 +254,8 @@ function formatTime(time) {
     const [
         hours,
         minutes
-    ] = time.split(":");
+    ] =
+        time.split(":");
 
 
     const date =
@@ -244,7 +282,7 @@ function formatTime(time) {
 
 
 // ============================================
-// ICONO DEL EVENTO
+// ICONO
 // ============================================
 
 function getEventIcon(type) {
@@ -270,7 +308,36 @@ function getEventIcon(type) {
 
 
 // ============================================
-// GENERAR CALENDARIO
+// PARTICIPANTES DE UN EVENTO
+// ============================================
+
+function getEventParticipants(eventId) {
+
+    return participants.filter(
+        participant =>
+            participant.event_id === eventId
+    );
+
+}
+
+
+// ============================================
+// ¿ESTOY APUNTADO?
+// ============================================
+
+function isJoined(eventId) {
+
+    return participants.some(
+        participant =>
+            participant.event_id === eventId &&
+            participant.user_id === currentUser.id
+    );
+
+}
+
+
+// ============================================
+// CALENDARIO
 // ============================================
 
 function renderCalendar() {
@@ -325,8 +392,10 @@ function renderCalendar() {
                 "div"
             );
 
+
         emptyDay.className =
             "day empty";
+
 
         calendar.appendChild(
             emptyDay
@@ -335,7 +404,7 @@ function renderCalendar() {
     }
 
 
-    // DÍAS DEL MES
+    // DÍAS
 
     for (
         let day = 1;
@@ -376,7 +445,7 @@ function renderCalendar() {
         }
 
 
-        // NÚMERO DEL DÍA
+        // NÚMERO
 
         const dayNumber =
             document.createElement(
@@ -454,8 +523,6 @@ function renderCalendar() {
     }
 
 
-    // TÍTULO DEL MES
-
     monthTitle.textContent =
         currentDate.toLocaleDateString(
             "es-ES",
@@ -469,7 +536,7 @@ function renderCalendar() {
 
 
 // ============================================
-// MOSTRAR LISTA DE EVENTOS
+// MOSTRAR EVENTOS
 // ============================================
 
 function renderEvents() {
@@ -490,6 +557,122 @@ function renderEvents() {
                 "event-card";
 
 
+            const eventParticipants =
+                getEventParticipants(
+                    event.id
+                );
+
+
+            const count =
+                eventParticipants.length;
+
+
+            const joined =
+                isJoined(
+                    event.id
+                );
+
+
+            let participantHTML =
+                "";
+
+
+            eventParticipants.forEach(
+                participant => {
+
+                    participantHTML += `
+
+                        <div class="participant">
+
+                            ✅
+                            ${escapeHTML(
+                                participant.player_name
+                            )}
+
+                        </div>
+
+                    `;
+
+                }
+            );
+
+
+            if (
+                eventParticipants.length === 0
+            ) {
+
+                participantHTML = `
+
+                    <div class="no-participants">
+
+                        Todavía nadie se ha apuntado.
+
+                    </div>
+
+                `;
+
+            }
+
+
+            let buttonHTML;
+
+
+            if (joined) {
+
+                buttonHTML = `
+
+                    <button
+
+                        class="leave-button"
+
+                        onclick="leaveEvent(${event.id})"
+
+                    >
+
+                        🔴 Retirarme
+
+                    </button>
+
+                `;
+
+            } else if (
+                count >= event.capacity
+            ) {
+
+                buttonHTML = `
+
+                    <button
+                        class="full-button"
+                        disabled
+                    >
+
+                        🚫 Completo
+
+                    </button>
+
+                `;
+
+            } else {
+
+                buttonHTML = `
+
+                    <button
+
+                        class="join-button"
+
+                        onclick="joinEvent(${event.id})"
+
+                    >
+
+                        🟢 Apuntarme
+
+                    </button>
+
+                `;
+
+            }
+
+
             card.innerHTML = `
 
                 <div class="event-card-header">
@@ -502,7 +685,9 @@ function renderEvents() {
                                 event.type
                             )}
 
-                            ${event.name}
+                            ${escapeHTML(
+                                event.name
+                            )}
 
                         </h3>
 
@@ -532,7 +717,9 @@ function renderEvents() {
 
                     <div class="capacity">
 
-                        👥 0/${event.capacity}
+                        👥
+
+                        ${count}/${event.capacity}
 
                     </div>
 
@@ -541,7 +728,34 @@ function renderEvents() {
 
                 <div class="event-info">
 
-                    ${event.description || ""}
+                    ${escapeHTML(
+                        event.description || ""
+                    )}
+
+                </div>
+
+
+                <div class="participants-box">
+
+                    <strong>
+
+                        👥 Participantes
+
+                    </strong>
+
+
+                    <div class="participants-list">
+
+                        ${participantHTML}
+
+                    </div>
+
+                </div>
+
+
+                <div class="event-actions">
+
+                    ${buttonHTML}
 
                 </div>
 
@@ -554,6 +768,209 @@ function renderEvents() {
 
         }
     );
+
+}
+
+
+// ============================================
+// ESCAPAR HTML
+// ============================================
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        text;
+
+
+    return div.innerHTML;
+
+}
+
+
+// ============================================
+// APUNTARSE
+// ============================================
+
+async function joinEvent(eventId) {
+
+    if (!currentUser) {
+
+        alert(
+            "No estás conectado."
+        );
+
+        return;
+
+    }
+
+
+    const event =
+        events.find(
+            e =>
+                e.id === eventId
+        );
+
+
+    if (!event) {
+
+        return;
+
+    }
+
+
+    const currentParticipants =
+        getEventParticipants(
+            eventId
+        );
+
+
+    if (
+        currentParticipants.length >=
+        event.capacity
+    ) {
+
+        alert(
+            "Este evento está completo."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        isJoined(eventId)
+    ) {
+
+        alert(
+            "Ya estás apuntado."
+        );
+
+        return;
+
+    }
+
+
+    const playerName =
+        prompt(
+            "¿Qué nombre quieres mostrar en el calendario?"
+        );
+
+
+    if (!playerName) {
+
+        return;
+
+    }
+
+
+    const cleanName =
+        playerName.trim();
+
+
+    if (!cleanName) {
+
+        return;
+
+    }
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("event_participants")
+            .insert({
+
+                event_id:
+                    eventId,
+
+                user_id:
+                    currentUser.id,
+
+                player_name:
+                    cleanName
+
+            });
+
+
+    if (error) {
+
+        console.error(
+            "Error apuntándose:",
+            error
+        );
+
+
+        alert(
+            "No se pudo apuntar. Revisa la consola."
+        );
+
+
+        return;
+
+    }
+
+
+    await loadEvents();
+
+}
+
+
+// ============================================
+// RETIRARSE
+// ============================================
+
+async function leaveEvent(eventId) {
+
+    if (!currentUser) {
+
+        return;
+
+    }
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("event_participants")
+            .delete()
+            .eq(
+                "event_id",
+                eventId
+            )
+            .eq(
+                "user_id",
+                currentUser.id
+            );
+
+
+    if (error) {
+
+        console.error(
+            "Error retirándose:",
+            error
+        );
+
+
+        alert(
+            "No se pudo retirar la inscripción."
+        );
+
+
+        return;
+
+    }
+
+
+    await loadEvents();
 
 }
 
@@ -591,7 +1008,7 @@ nextMonthButton.addEventListener(
 
 
 // ============================================
-// BOTÓN HOY
+// HOY
 // ============================================
 
 todayButton.addEventListener(
@@ -640,7 +1057,7 @@ closeModal.addEventListener(
 
 
 // ============================================
-// CERRAR AL PULSAR FUERA
+// CERRAR MODAL AL PULSAR FUERA
 // ============================================
 
 eventModal.addEventListener(
@@ -721,41 +1138,38 @@ eventForm.addEventListener(
             ).value;
 
 
-        // GUARDAR EN SUPABASE
-
         const {
-            data,
             error
-        } = await supabaseClient
-            .from("events")
-            .insert({
+        } =
+            await supabaseClient
+                .from("events")
+                .insert({
 
-                user_id:
-                    currentUser.id,
+                    user_id:
+                        currentUser.id,
 
-                name:
-                    name,
+                    name:
+                        name,
 
-                type:
-                    type,
+                    type:
+                        type,
 
-                event_date:
-                    date,
+                    event_date:
+                        date,
 
-                event_time:
-                    time,
+                    event_time:
+                        time,
 
-                timezone:
-                    getTimezone(),
+                    timezone:
+                        getTimezone(),
 
-                capacity:
-                    capacity,
+                    capacity:
+                        capacity,
 
-                description:
-                    description
+                    description:
+                        description
 
-            })
-            .select();
+                });
 
 
         if (error) {
@@ -776,25 +1190,13 @@ eventForm.addEventListener(
         }
 
 
-        console.log(
-            "Evento creado:",
-            data
-        );
-
-
-        // LIMPIAR
-
         eventForm.reset();
 
-
-        // CERRAR
 
         eventModal.classList.add(
             "hidden"
         );
 
-
-        // RECARGAR
 
         await loadEvents();
 
@@ -803,7 +1205,7 @@ eventForm.addEventListener(
 
 
 // ============================================
-// INICIAR APLICACIÓN
+// INICIAR
 // ============================================
 
 async function startApp() {
@@ -811,11 +1213,11 @@ async function startApp() {
     showTimezone();
 
 
-    const loggedIn =
+    const connected =
         await loginAnonymous();
 
 
-    if (!loggedIn) {
+    if (!connected) {
 
         return;
 
