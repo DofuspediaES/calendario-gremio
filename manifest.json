@@ -1,0 +1,10 @@
+{
+  "name": "Calendario del Gremio",
+  "short_name": "Calendario Gremio",
+  "description": "Calendario de actividades del gremio",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#181818",
+  "theme_color": "#242424",
+  "orientation": "portrait"
+}
