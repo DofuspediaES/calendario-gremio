@@ -104,6 +104,41 @@ function showTimezone() {
 
 async function loginAnonymous() {
 
+    // ========================================
+    // COMPROBAR SI YA EXISTE UNA SESIÓN
+    // ========================================
+
+    const {
+        data: sessionData
+    } =
+        await supabaseClient.auth.getSession();
+
+
+    if (
+        sessionData &&
+        sessionData.session &&
+        sessionData.session.user
+    ) {
+
+        currentUser =
+            sessionData.session.user;
+
+
+        console.log(
+            "Sesión existente:",
+            currentUser.id
+        );
+
+
+        return true;
+
+    }
+
+
+    // ========================================
+    // CREAR USUARIO ANÓNIMO SOLO SI NO EXISTE
+    // ========================================
+
     const {
         data,
         error
@@ -133,7 +168,7 @@ async function loginAnonymous() {
 
 
     console.log(
-        "Usuario conectado:",
+        "Nuevo usuario:",
         currentUser.id
     );
 
@@ -1086,7 +1121,6 @@ async function joinEvent(eventId) {
 const playerName =
     currentProfile.player_name;
 
-
 const {
     error
 } =
@@ -1104,7 +1138,6 @@ const {
                 playerName
 
         });
-
 
     if (error) {
 
