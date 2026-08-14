@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Calendario del Gremio</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- ENCABEZADO -->
+
+        <header class="header">
+
+            <div>
+                <h1>⚔️ Calendario del Gremio</h1>
+                <p>Aventuwewos del Wey Wabbit</p>
+            </div>
+
+            <button id="todayButton" class="today-button">
+                Hoy
+            </button>
+
+        </header>
+
+
+        <!-- NAVEGACIÓN DEL MES -->
+
+        <div class="calendar-navigation">
+
+            <button id="previousMonth" class="nav-button">
+                ‹
+            </button>
+
+            <h2 id="monthTitle">
+                Agosto 2026
+            </h2>
+
+            <button id="nextMonth" class="nav-button">
+                ›
+            </button>
+
+        </div>
+
+
+        <!-- CALENDARIO -->
+
+        <main>
+
+            <div class="weekdays">
+
+                <div>LUN</div>
+                <div>MAR</div>
+                <div>MIÉ</div>
+                <div>JUE</div>
+                <div>VIE</div>
+                <div>SÁB</div>
+                <div>DOM</div>
+
+            </div>
+
+
+            <div id="calendar" class="calendar">
+
+                <!-- JavaScript genera los días -->
+
+            </div>
+
+        </main>
+
+
+        <!-- INFORMACIÓN DE ZONA HORARIA -->
+
+        <div class="timezone">
+
+            🕐 Tu hora local:
+            <strong id="timezoneName"></strong>
+
+        </div>
+
+
+        <!-- PANEL DE EVENTOS -->
+
+        <section class="events-section">
+
+            <div class="section-title">
+
+                <h2>📋 Próximas actividades</h2>
+
+                <button id="addEventButton" class="add-button">
+                    ＋ Crear actividad
+                </button>
+
+            </div>
+
+
+            <div id="eventsList">
+
+                <!-- JavaScript coloca los eventos aquí -->
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <!-- MODAL PARA CREAR EVENTO -->
+
+    <div id="eventModal" class="modal hidden">
+
+        <div class="modal-content">
+
+            <button id="closeModal" class="close-button">
+                ×
+            </button>
+
+            <h2>➕ Crear actividad</h2>
+
+            <form id="eventForm">
+
+                <label>
+                    Nombre de la actividad
+
+                    <input
+                        type="text"
+                        id="eventName"
+                        placeholder="Ej: RAID Conde Kontatrás"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+                    Tipo
+
+                    <select id="eventType">
+
+                        <option value="raid">
+                            ⚔️ Raid
+                        </option>
+
+                        <option value="dungeon">
+                            🏰 Mazmorra
+                        </option>
+
+                        <option value="quest">
+                            🎯 Encargo
+                        </option>
+
+                        <option value="farm">
+                            💰 Farmeo
+                        </option>
+
+                        <option value="other">
+                            ⭐ Otro
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <div class="form-row">
+
+                    <label>
+                        Fecha
+
+                        <input
+                            type="date"
+                            id="eventDate"
+                            required
+                        >
+
+                    </label>
+
+
+                    <label>
+                        Hora
+
+                        <input
+                            type="time"
+                            id="eventTime"
+                            required
+                        >
+
+                    </label>
+
+                </div>
+
+
+                <label>
+
+                    Cupos
+
+                    <input
+                        type="number"
+                        id="eventCapacity"
+                        min="1"
+                        max="100"
+                        value="12"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Descripción
+
+                    <textarea
+                        id="eventDescription"
+                        placeholder="Información adicional..."
+                    ></textarea>
+
+                </label>
+
+
+                <button type="submit" class="submit-button">
+                    Crear actividad
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <script src="app.js"></script>
+
+</body>
+</html>
