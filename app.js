@@ -1,12 +1,13 @@
 // ============================================
 // CALENDARIO DEL GREMIO
-// PARTE 1
+// PARTE 2
+// SUPABASE
 // ============================================
 
 
-// --------------------------------------------
-// VARIABLES
-// --------------------------------------------
+// ============================================
+// CONFIGURACIÓN SUPABASE
+// ============================================
 
 const SUPABASE_URL =
     "https://nmmetzityubqbrbpibee.supabase.co";
@@ -14,8 +15,23 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
     "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
 
-const calendar = document.getElementById("calendar");
-const monthTitle = document.getElementById("monthTitle");
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+// ============================================
+// ELEMENTOS
+// ============================================
+
+const calendar =
+    document.getElementById("calendar");
+
+const monthTitle =
+    document.getElementById("monthTitle");
 
 const previousMonthButton =
     document.getElementById("previousMonth");
@@ -45,85 +61,138 @@ const eventForm =
     document.getElementById("eventForm");
 
 
-// --------------------------------------------
-// FECHA ACTUAL
-// --------------------------------------------
+// ============================================
+// VARIABLES
+// ============================================
 
 let currentDate = new Date();
 
+let events = [];
 
-// --------------------------------------------
-// EVENTOS DE PRUEBA
-// --------------------------------------------
-
-let events = [
-
-    {
-        id: 1,
-
-        name: "RAID Conde Kontatrás",
-
-        type: "raid",
-
-        date: "2026-08-15",
-
-        time: "20:00",
-
-        capacity: 12,
-
-        participants: [
-            "Diego",
-            "Juan",
-            "Pedro"
-        ],
-
-        description:
-            "Raid del gremio."
-    },
-
-    {
-        id: 2,
-
-        name: "Mazmorra Tal Kasha",
-
-        type: "dungeon",
-
-        date: "2026-08-17",
-
-        time: "21:30",
-
-        capacity: 8,
-
-        participants: [
-            "Carlos",
-            "Luis"
-        ],
-
-        description:
-            "Vamos a intentar pasar la mazmorra."
-    }
-
-];
+let currentUser = null;
 
 
-// --------------------------------------------
-// NOMBRE DE LA ZONA HORARIA
-// --------------------------------------------
+// ============================================
+// ZONA HORARIA
+// ============================================
+
+function getTimezone() {
+
+    return Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone;
+
+}
+
 
 function showTimezone() {
 
-    const timezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone;
+    timezoneName.textContent =
+        getTimezone();
 
-    timezoneName.textContent = timezone;
 }
 
-showTimezone();
+
+// ============================================
+// INICIAR USUARIO ANÓNIMO
+// ============================================
+
+async function loginAnonymous() {
+
+    const {
+        data,
+        error
+    } = await supabaseClient.auth
+        .signInAnonymously();
 
 
-// --------------------------------------------
+    if (error) {
+
+        console.error(
+            "Error iniciando sesión:",
+            error
+        );
+
+        alert(
+            "No se pudo conectar con Supabase."
+        );
+
+        return false;
+
+    }
+
+
+    currentUser =
+        data.user;
+
+
+    console.log(
+        "Usuario conectado:",
+        currentUser.id
+    );
+
+
+    return true;
+
+}
+
+
+// ============================================
+// CARGAR EVENTOS
+// ============================================
+
+async function loadEvents() {
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("events")
+        .select("*")
+        .order(
+            "event_date",
+            {
+                ascending: true
+            }
+        )
+        .order(
+            "event_time",
+            {
+                ascending: true
+            }
+        );
+
+
+    if (error) {
+
+        console.error(
+            "Error cargando eventos:",
+            error
+        );
+
+        alert(
+            "No se pudieron cargar los eventos."
+        );
+
+        return;
+
+    }
+
+
+    events =
+        data || [];
+
+
+    renderCalendar();
+
+    renderEvents();
+
+}
+
+
+// ============================================
 // FORMATEAR FECHA
-// --------------------------------------------
+// ============================================
 
 function formatDate(date) {
 
@@ -139,22 +208,29 @@ function formatDate(date) {
 }
 
 
-// --------------------------------------------
+// ============================================
 // FORMATEAR HORA
-// --------------------------------------------
+// ============================================
 
 function formatTime(time) {
 
-    const [hours, minutes] =
-        time.split(":");
+    const [
+        hours,
+        minutes
+    ] = time.split(":");
+
 
     const date =
         new Date();
 
+
     date.setHours(
         Number(hours),
-        Number(minutes)
+        Number(minutes),
+        0,
+        0
     );
+
 
     return date.toLocaleTimeString(
         "es-ES",
@@ -163,12 +239,13 @@ function formatTime(time) {
             minute: "2-digit"
         }
     );
+
 }
 
 
-// --------------------------------------------
+// ============================================
 // ICONO DEL EVENTO
-// --------------------------------------------
+// ============================================
 
 function getEventIcon(type) {
 
@@ -186,13 +263,15 @@ function getEventIcon(type) {
 
     };
 
+
     return icons[type] || "⭐";
+
 }
 
 
-// --------------------------------------------
+// ============================================
 // GENERAR CALENDARIO
-// --------------------------------------------
+// ============================================
 
 function renderCalendar() {
 
@@ -226,17 +305,14 @@ function renderCalendar() {
         firstDay.getDay();
 
 
-    // Convertir domingo = 0
-    // a domingo = 7
-
     if (startDay === 0) {
+
         startDay = 7;
+
     }
 
 
-    // ----------------------------------------
     // DÍAS VACÍOS
-    // ----------------------------------------
 
     for (
         let i = 1;
@@ -245,7 +321,9 @@ function renderCalendar() {
     ) {
 
         const emptyDay =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         emptyDay.className =
             "day empty";
@@ -257,9 +335,7 @@ function renderCalendar() {
     }
 
 
-    // ----------------------------------------
     // DÍAS DEL MES
-    // ----------------------------------------
 
     for (
         let day = 1;
@@ -268,7 +344,10 @@ function renderCalendar() {
     ) {
 
         const dayElement =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         dayElement.className =
             "day";
@@ -278,12 +357,11 @@ function renderCalendar() {
             `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
 
-        // ------------------------------------
-        // COMPROBAR SI ES HOY
-        // ------------------------------------
+        // HOY
 
         const today =
             new Date();
+
 
         if (
             today.getFullYear() === year &&
@@ -298,32 +376,34 @@ function renderCalendar() {
         }
 
 
-        // ------------------------------------
         // NÚMERO DEL DÍA
-        // ------------------------------------
 
         const dayNumber =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         dayNumber.className =
             "day-number";
 
+
         dayNumber.textContent =
             day;
+
 
         dayElement.appendChild(
             dayNumber
         );
 
 
-        // ------------------------------------
         // EVENTOS
-        // ------------------------------------
 
         const dayEvents =
             events.filter(
                 event =>
-                    event.date === dateString
+                    event.event_date ===
+                    dateString
             );
 
 
@@ -331,7 +411,10 @@ function renderCalendar() {
             event => {
 
                 const eventElement =
-                    document.createElement("div");
+                    document.createElement(
+                        "div"
+                    );
+
 
                 eventElement.className =
                     `calendar-event ${event.type}`;
@@ -340,10 +423,17 @@ function renderCalendar() {
                 eventElement.innerHTML = `
 
                     <span class="event-time">
-                        ${formatTime(event.time)}
+
+                        ${formatTime(
+                            event.event_time
+                        )}
+
                     </span>
 
-                    ${getEventIcon(event.type)}
+                    ${getEventIcon(
+                        event.type
+                    )}
+
                     ${event.name}
 
                 `;
@@ -364,9 +454,7 @@ function renderCalendar() {
     }
 
 
-    // ----------------------------------------
     // TÍTULO DEL MES
-    // ----------------------------------------
 
     monthTitle.textContent =
         currentDate.toLocaleDateString(
@@ -380,47 +468,26 @@ function renderCalendar() {
 }
 
 
-// --------------------------------------------
+// ============================================
 // MOSTRAR LISTA DE EVENTOS
-// --------------------------------------------
+// ============================================
 
 function renderEvents() {
 
     eventsList.innerHTML = "";
 
 
-    const sortedEvents =
-        [...events].sort(
-            (a, b) => {
-
-                const dateA =
-                    new Date(
-                        `${a.date}T${a.time}`
-                    );
-
-                const dateB =
-                    new Date(
-                        `${b.date}T${b.time}`
-                    );
-
-                return dateA - dateB;
-
-            }
-        );
-
-
-    sortedEvents.forEach(
+    events.forEach(
         event => {
 
             const card =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             card.className =
                 "event-card";
-
-
-            const participantCount =
-                event.participants.length;
 
 
             card.innerHTML = `
@@ -430,22 +497,32 @@ function renderEvents() {
                     <div>
 
                         <h3>
-                            ${getEventIcon(event.type)}
+
+                            ${getEventIcon(
+                                event.type
+                            )}
+
                             ${event.name}
+
                         </h3>
+
 
                         <div class="event-info">
 
-                            📅 ${formatDate(
+                            📅
+
+                            ${formatDate(
                                 new Date(
-                                    `${event.date}T12:00:00`
+                                    `${event.event_date}T12:00:00`
                                 )
                             )}
 
                             &nbsp;&nbsp;
 
-                            🕐 ${formatTime(
-                                event.time
+                            🕐
+
+                            ${formatTime(
+                                event.event_time
                             )}
 
                         </div>
@@ -455,8 +532,7 @@ function renderEvents() {
 
                     <div class="capacity">
 
-                        👥
-                        ${participantCount}/${event.capacity}
+                        👥 0/${event.capacity}
 
                     </div>
 
@@ -482,9 +558,9 @@ function renderEvents() {
 }
 
 
-// --------------------------------------------
+// ============================================
 // CAMBIAR MES
-// --------------------------------------------
+// ============================================
 
 previousMonthButton.addEventListener(
     "click",
@@ -514,9 +590,9 @@ nextMonthButton.addEventListener(
 );
 
 
-// --------------------------------------------
+// ============================================
 // BOTÓN HOY
-// --------------------------------------------
+// ============================================
 
 todayButton.addEventListener(
     "click",
@@ -531,9 +607,9 @@ todayButton.addEventListener(
 );
 
 
-// --------------------------------------------
+// ============================================
 // ABRIR MODAL
-// --------------------------------------------
+// ============================================
 
 addEventButton.addEventListener(
     "click",
@@ -547,9 +623,9 @@ addEventButton.addEventListener(
 );
 
 
-// --------------------------------------------
+// ============================================
 // CERRAR MODAL
-// --------------------------------------------
+// ============================================
 
 closeModal.addEventListener(
     "click",
@@ -563,9 +639,9 @@ closeModal.addEventListener(
 );
 
 
-// --------------------------------------------
-// CERRAR AL HACER CLICK FUERA
-// --------------------------------------------
+// ============================================
+// CERRAR AL PULSAR FUERA
+// ============================================
 
 eventModal.addEventListener(
     "click",
@@ -585,84 +661,170 @@ eventModal.addEventListener(
 );
 
 
-// --------------------------------------------
+// ============================================
 // CREAR EVENTO
-// --------------------------------------------
+// ============================================
 
 eventForm.addEventListener(
     "submit",
-    event => {
+    async event => {
 
         event.preventDefault();
 
 
-        const newEvent = {
+        if (!currentUser) {
 
-            id:
-                Date.now(),
+            alert(
+                "Todavía no estás conectado."
+            );
 
-            name:
+            return;
+
+        }
+
+
+        const name =
+            document.getElementById(
+                "eventName"
+            ).value;
+
+
+        const type =
+            document.getElementById(
+                "eventType"
+            ).value;
+
+
+        const date =
+            document.getElementById(
+                "eventDate"
+            ).value;
+
+
+        const time =
+            document.getElementById(
+                "eventTime"
+            ).value;
+
+
+        const capacity =
+            Number(
                 document.getElementById(
-                    "eventName"
-                ).value,
-
-            type:
-                document.getElementById(
-                    "eventType"
-                ).value,
-
-            date:
-                document.getElementById(
-                    "eventDate"
-                ).value,
-
-            time:
-                document.getElementById(
-                    "eventTime"
-                ).value,
-
-            capacity:
-                Number(
-                    document.getElementById(
-                        "eventCapacity"
-                    ).value
-                ),
-
-            participants: [],
-
-            description:
-                document.getElementById(
-                    "eventDescription"
+                    "eventCapacity"
                 ).value
+            );
 
-        };
+
+        const description =
+            document.getElementById(
+                "eventDescription"
+            ).value;
 
 
-        events.push(
-            newEvent
+        // GUARDAR EN SUPABASE
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("events")
+            .insert({
+
+                user_id:
+                    currentUser.id,
+
+                name:
+                    name,
+
+                type:
+                    type,
+
+                event_date:
+                    date,
+
+                event_time:
+                    time,
+
+                timezone:
+                    getTimezone(),
+
+                capacity:
+                    capacity,
+
+                description:
+                    description
+
+            })
+            .select();
+
+
+        if (error) {
+
+            console.error(
+                "Error creando evento:",
+                error
+            );
+
+
+            alert(
+                "No se pudo crear el evento."
+            );
+
+
+            return;
+
+        }
+
+
+        console.log(
+            "Evento creado:",
+            data
         );
 
 
+        // LIMPIAR
+
         eventForm.reset();
 
+
+        // CERRAR
 
         eventModal.classList.add(
             "hidden"
         );
 
 
-        renderCalendar();
+        // RECARGAR
 
-        renderEvents();
+        await loadEvents();
 
     }
 );
 
 
-// --------------------------------------------
-// INICIAR
-// --------------------------------------------
+// ============================================
+// INICIAR APLICACIÓN
+// ============================================
 
-renderCalendar();
+async function startApp() {
 
-renderEvents();
+    showTimezone();
+
+
+    const loggedIn =
+        await loginAnonymous();
+
+
+    if (!loggedIn) {
+
+        return;
+
+    }
+
+
+    await loadEvents();
+
+}
+
+
+startApp();
