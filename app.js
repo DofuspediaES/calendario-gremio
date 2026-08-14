@@ -1083,26 +1083,27 @@ async function joinEvent(eventId) {
 
     }
 
-  const playerName =
+const playerName =
     currentProfile.player_name;
 
-    const {
-        error
-    } =
-        await supabaseClient
-            .from("event_participants")
-            .insert({
 
-                event_id:
-                    eventId,
+const {
+    error
+} =
+    await supabaseClient
+        .from("event_participants")
+        .insert({
 
-                user_id:
-                    currentUser.id,
+            event_id:
+                eventId,
 
-                player_name:
-                    cleanName
+            user_id:
+                currentUser.id,
 
-            });
+            player_name:
+                playerName
+
+        });
 
 
     if (error) {
