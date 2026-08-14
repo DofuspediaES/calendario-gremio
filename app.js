@@ -404,6 +404,152 @@ async function changePlayerName() {
 }
 
 // ============================================
+// NOTIFICACIONES
+// ============================================
+
+const notificationButton =
+    document.getElementById(
+        "notificationButton"
+    );
+
+
+// ============================================
+// ACTUALIZAR BOTÓN
+// ============================================
+
+function updateNotificationButton() {
+
+    if (!notificationButton) {
+
+        return;
+
+    }
+
+
+    if (
+        !("Notification" in window)
+    ) {
+
+        notificationButton.textContent =
+            "❌ No compatible";
+
+        notificationButton.disabled =
+            true;
+
+        return;
+
+    }
+
+
+    if (
+        Notification.permission ===
+        "granted"
+    ) {
+
+        notificationButton.textContent =
+            "🔔 Notificaciones activadas";
+
+        return;
+
+    }
+
+
+    if (
+        Notification.permission ===
+        "denied"
+    ) {
+
+        notificationButton.textContent =
+            "🚫 Notificaciones bloqueadas";
+
+        return;
+
+    }
+
+
+    notificationButton.textContent =
+        "🔔 Activar notificaciones";
+
+}
+
+
+// ============================================
+// PEDIR PERMISO
+// ============================================
+
+async function enableNotifications() {
+
+    if (
+        !("Notification" in window)
+    ) {
+
+        alert(
+            "Tu navegador no permite notificaciones."
+        );
+
+        return;
+
+    }
+
+
+    const permission =
+        await Notification.requestPermission();
+
+
+    if (
+        permission === "granted"
+    ) {
+
+        updateNotificationButton();
+
+
+        new Notification(
+            "🔔 Calendario del Gremio",
+            {
+
+                body:
+                    "Las notificaciones están activadas."
+
+            }
+        );
+
+
+        console.log(
+            "Notificaciones activadas."
+        );
+
+    } else {
+
+        updateNotificationButton();
+
+
+        console.log(
+            "Permiso de notificaciones:",
+            permission
+        );
+
+    }
+
+}
+
+
+// ============================================
+// BOTÓN
+// ============================================
+
+if (notificationButton) {
+
+    notificationButton.addEventListener(
+        "click",
+        enableNotifications
+    );
+
+}
+
+
+updateNotificationButton();
+
+// ============================================
 // CARGAR EVENTOS
 // ============================================
 
