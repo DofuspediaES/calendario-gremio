@@ -74,6 +74,8 @@ let participants = [];
 
 let currentUser = null;
 
+let currentProfile = null;
+
 
 // ============================================
 // ZONA HORARIA
@@ -140,6 +142,231 @@ async function loginAnonymous() {
 
 }
 
+// ============================================
+// CARGAR PERFIL
+// ============================================
+
+async function loadProfile() {
+
+    if (!currentUser) {
+
+        return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("profiles")
+            .select("*")
+            .eq(
+                "id",
+                currentUser.id
+            )
+            .maybeSingle();
+
+
+    if (error) {
+
+        console.error(
+            "Error cargando perfil:",
+            error
+        );
+
+        return;
+
+    }
+
+
+    // ========================================
+    // SI NO EXISTE EL PERFIL
+    // ========================================
+
+    if (!data) {
+
+        const playerName =
+            prompt(
+                "¿Cuál es tu nombre dentro del gremio?"
+            );
+
+
+        if (
+            !playerName ||
+            !playerName.trim()
+        ) {
+
+            alert(
+                "Necesitas poner un nombre."
+            );
+
+            return;
+
+        }
+
+
+        const cleanName =
+            playerName.trim();
+
+
+        const {
+            data: newProfile,
+            error: createError
+        } =
+            await supabaseClient
+                .from("profiles")
+                .insert({
+
+                    id:
+                        currentUser.id,
+
+                    player_name:
+                        cleanName
+
+                })
+                .select()
+                .single();
+
+
+        if (createError) {
+
+            console.error(
+                "Error creando perfil:",
+                createError
+            );
+
+            return;
+
+        }
+
+
+        currentProfile =
+            newProfile;
+
+    } else {
+
+        currentProfile =
+            data;
+
+    }
+
+
+    updateProfileDisplay();
+
+}
+
+// ============================================
+// MOSTRAR NOMBRE DEL JUGADOR
+// ============================================
+
+function updateProfileDisplay() {
+
+    const display =
+        document.getElementById(
+            "playerNameDisplay"
+        );
+
+
+    if (
+        !display ||
+        !currentProfile
+    ) {
+
+        return;
+
+    }
+
+
+    display.textContent =
+        `👤 ${currentProfile.player_name}`;
+
+}
+
+// ============================================
+// CAMBIAR NOMBRE
+// ============================================
+
+async function changePlayerName() {
+
+    if (
+        !currentUser ||
+        !currentProfile
+    ) {
+
+        return;
+
+    }
+
+
+    const newName =
+        prompt(
+            "Nuevo nombre del jugador:",
+            currentProfile.player_name
+        );
+
+
+    if (
+        !newName ||
+        !newName.trim()
+    ) {
+
+        return;
+
+    }
+
+
+    const cleanName =
+        newName.trim();
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("profiles")
+            .update({
+
+                player_name:
+                    cleanName,
+
+                updated_at:
+                    new Date().toISOString()
+
+            })
+            .eq(
+                "id",
+                currentUser.id
+            )
+            .select()
+            .single();
+
+
+    if (error) {
+
+        console.error(
+            "Error cambiando nombre:",
+            error
+        );
+
+        alert(
+            "No se pudo cambiar el nombre."
+        );
+
+        return;
+
+    }
+
+
+    currentProfile =
+        data;
+
+
+    updateProfileDisplay();
+
+}
 
 // ============================================
 // CARGAR EVENTOS
@@ -856,30 +1083,8 @@ async function joinEvent(eventId) {
 
     }
 
-
-    const playerName =
-        prompt(
-            "¿Qué nombre quieres mostrar en el calendario?"
-        );
-
-
-    if (!playerName) {
-
-        return;
-
-    }
-
-
-    const cleanName =
-        playerName.trim();
-
-
-    if (!cleanName) {
-
-        return;
-
-    }
-
+  const playerName =
+    currentProfile.player_name;
 
     const {
         error
@@ -974,6 +1179,20 @@ async function leaveEvent(eventId) {
 
 }
 
+// ============================================
+// BOTÓN CAMBIAR NOMBRE
+// ============================================
+
+const changeNameButton =
+    document.getElementById(
+        "changeNameButton"
+    );
+
+
+changeNameButton.addEventListener(
+    "click",
+    changePlayerName
+);
 
 // ============================================
 // CAMBIAR MES
@@ -1223,6 +1442,13 @@ async function startApp() {
 
     }
 
+
+    // Cargar perfil
+
+    await loadProfile();
+
+
+    // Cargar eventos
 
     await loadEvents();
 
