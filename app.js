@@ -503,11 +503,11 @@ const EVENT_TYPE_NAMES = {
     dungeon: "Mazmorra",
     quest: "Misión",
     infinite_dreams: "Sueños Infinitos",
-    commission: "Encargo",
-    raid: "Raid / Cacería",
-    farm: "Farm / Leveo",
-    wanted: "Buscado",
-    other: "Otro"
+    commission: "Encargo de gremio",
+    raid: "Raid",
+    farm: "Farm / Drop",
+    wanted: "Busca y Captura (ByC)",
+    other: "Otros"
 };
 
 function renderEvents() {
