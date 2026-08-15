@@ -1,7 +1,5 @@
 // ============================================
 // CALENDARIO DEL GREMIO
-// PARTE 3
-// PARTICIPANTES
 // ============================================
 
 
@@ -24,7 +22,7 @@ const supabaseClient =
 
 
 // ============================================
-// ELEMENTOS
+// ELEMENTOS DEL DOM
 // ============================================
 
 const calendar =
@@ -60,9 +58,15 @@ const closeModal =
 const eventForm =
     document.getElementById("eventForm");
 
+const notificationButton =
+    document.getElementById("notificationButton");
+
+const changeNameButton =
+    document.getElementById("changeNameButton");
+
 
 // ============================================
-// VARIABLES
+// VARIABLES GLOBALES
 // ============================================
 
 let currentDate =
@@ -92,21 +96,18 @@ function getTimezone() {
 
 function showTimezone() {
 
-    timezoneName.textContent =
-        getTimezone();
+    if (timezoneName) {
+        timezoneName.textContent = getTimezone();
+    }
 
 }
 
 
 // ============================================
-// USUARIO
+// USUARIO / SESIÓN
 // ============================================
 
 async function loginAnonymous() {
-
-    // ========================================
-    // COMPROBAR SI YA EXISTE UNA SESIÓN
-    // ========================================
 
     const {
         data: sessionData
@@ -134,10 +135,6 @@ async function loginAnonymous() {
 
     }
 
-
-    // ========================================
-    // CREAR USUARIO ANÓNIMO SOLO SI NO EXISTE
-    // ========================================
 
     const {
         data,
@@ -177,6 +174,7 @@ async function loginAnonymous() {
 
 }
 
+
 // ============================================
 // CARGAR PERFIL
 // ============================================
@@ -215,10 +213,6 @@ async function loadProfile() {
 
     }
 
-
-    // ========================================
-    // SI NO EXISTE EL PERFIL
-    // ========================================
 
     if (!data) {
 
@@ -292,6 +286,7 @@ async function loadProfile() {
 
 }
 
+
 // ============================================
 // MOSTRAR NOMBRE DEL JUGADOR
 // ============================================
@@ -318,6 +313,7 @@ function updateProfileDisplay() {
         `👤 ${currentProfile.player_name}`;
 
 }
+
 
 // ============================================
 // CAMBIAR NOMBRE
@@ -403,19 +399,37 @@ async function changePlayerName() {
 
 }
 
-// ============================================
-// NOTIFICACIONES
-// ============================================
-
-const notificationButton =
-    document.getElementById(
-        "notificationButton"
-    );
-
 
 // ============================================
-// ACTUALIZAR BOTÓN
+// NOTIFICACIONES PUSH & VAPID
 // ============================================
+
+const VAPID_PUBLIC_KEY = "BOK3lrJGlltGR-5pN81n13l4t9u0cvvrphSXQ6VyjExqv2cEOtuymqqJcwSaHsiw0-4s4I3miJGA16EeoXX6bm0";
+
+
+function urlBase64ToUint8Array(base64String) {
+
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+
+    const outputArray = new Uint8Array(rawData.length);
+
+
+    for (let i = 0; i < rawData.length; ++i) {
+
+        outputArray[i] = rawData.charCodeAt(i);
+
+    }
+
+    return outputArray;
+
+}
+
 
 function updateNotificationButton() {
 
@@ -474,8 +488,82 @@ function updateNotificationButton() {
 
 
 // ============================================
-// PEDIR PERMISO
+// PASO 4: GUARDAR SUSCRIPCIÓN EN SUPABASE
 // ============================================
+
+async function subscribeToPush() {
+
+    if (!("serviceWorker" in navigator) || !currentUser) return;
+
+
+    try {
+
+        const registration = await navigator.serviceWorker.ready;
+
+
+        let subscription = await registration.pushManager.getSubscription();
+
+
+        if (!subscription) {
+
+            const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+            subscription = await registration.pushManager.subscribe({
+
+                userVisibleOnly: true,
+
+                applicationServerKey: convertedKey
+
+            });
+
+        }
+
+
+        const jsonSub = subscription.toJSON();
+
+
+        const { error } = await supabaseClient
+
+            .from("push_subscriptions")
+
+            .upsert({
+
+                user_id: currentUser.id,
+
+                endpoint: jsonSub.endpoint,
+
+                p256dh: jsonSub.keys ? jsonSub.keys.p256dh : "",
+
+                auth: jsonSub.keys ? jsonSub.keys.auth : "",
+
+                updated_at: new Date().toISOString()
+
+            }, {
+
+                onConflict: "user_id, endpoint"
+
+            });
+
+
+        if (error) {
+
+            console.error("Error guardando suscripción en Supabase:", error);
+
+        } else {
+
+            console.log("Suscripción Push guardada correctamente en Supabase.");
+
+        }
+
+
+    } catch (err) {
+
+        console.error("Error al suscribir a notificaciones Push:", err);
+
+    }
+
+}
+
 
 async function enableNotifications() {
 
@@ -501,6 +589,9 @@ async function enableNotifications() {
     ) {
 
         updateNotificationButton();
+
+
+        await subscribeToPush();
 
 
         new Notification(
@@ -532,22 +623,6 @@ async function enableNotifications() {
 
 }
 
-
-// ============================================
-// BOTÓN
-// ============================================
-
-if (notificationButton) {
-
-    notificationButton.addEventListener(
-        "click",
-        enableNotifications
-    );
-
-}
-
-
-updateNotificationButton();
 
 // ============================================
 // CARGAR EVENTOS
@@ -636,7 +711,7 @@ async function loadParticipants() {
 
 
 // ============================================
-// FECHA
+// FORMATOS Y FUNCIONES AUXILIARES
 // ============================================
 
 function formatDate(date) {
@@ -652,10 +727,6 @@ function formatDate(date) {
 
 }
 
-
-// ============================================
-// HORA
-// ============================================
 
 function formatTime(time) {
 
@@ -689,10 +760,6 @@ function formatTime(time) {
 }
 
 
-// ============================================
-// ICONO
-// ============================================
-
 function getEventIcon(type) {
 
     const icons = {
@@ -715,10 +782,6 @@ function getEventIcon(type) {
 }
 
 
-// ============================================
-// PARTICIPANTES DE UN EVENTO
-// ============================================
-
 function getEventParticipants(eventId) {
 
     return participants.filter(
@@ -729,11 +792,9 @@ function getEventParticipants(eventId) {
 }
 
 
-// ============================================
-// ¿ESTOY APUNTADO?
-// ============================================
-
 function isJoined(eventId) {
+
+    if (!currentUser) return false;
 
     return participants.some(
         participant =>
@@ -744,11 +805,30 @@ function isJoined(eventId) {
 }
 
 
+function escapeHTML(text) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        text;
+
+
+    return div.innerHTML;
+
+}
+
+
 // ============================================
-// CALENDARIO
+// RENDERIZAR CALENDARIO
 // ============================================
 
 function renderCalendar() {
+
+    if (!calendar) return;
 
     calendar.innerHTML = "";
 
@@ -812,7 +892,7 @@ function renderCalendar() {
     }
 
 
-    // DÍAS
+    // DÍAS DEL MES
 
     for (
         let day = 1;
@@ -834,7 +914,7 @@ function renderCalendar() {
             `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
 
-        // HOY
+        // DÍA DE HOY
 
         const today =
             new Date();
@@ -853,7 +933,7 @@ function renderCalendar() {
         }
 
 
-        // NÚMERO
+        // NÚMERO DE DÍA
 
         const dayNumber =
             document.createElement(
@@ -874,7 +954,7 @@ function renderCalendar() {
         );
 
 
-        // EVENTOS
+        // EVENTOS DEL DÍA
 
         const dayEvents =
             events.filter(
@@ -911,7 +991,7 @@ function renderCalendar() {
                         event.type
                     )}
 
-                    ${event.name}
+                    ${escapeHTML(event.name)}
 
                 `;
 
@@ -931,23 +1011,29 @@ function renderCalendar() {
     }
 
 
-    monthTitle.textContent =
-        currentDate.toLocaleDateString(
-            "es-ES",
-            {
-                month: "long",
-                year: "numeric"
-            }
-        );
+    if (monthTitle) {
+
+        monthTitle.textContent =
+            currentDate.toLocaleDateString(
+                "es-ES",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            );
+
+    }
 
 }
 
 
 // ============================================
-// MOSTRAR EVENTOS
+// MOSTRAR TARJETAS DE EVENTOS
 // ============================================
 
 function renderEvents() {
+
+    if (!eventsList) return;
 
     eventsList.innerHTML = "";
 
@@ -993,8 +1079,9 @@ function renderEvents() {
                         <div class="participant">
 
                             ✅
+
                             ${escapeHTML(
-                                participant.player_name
+                                participant.player_name || "Jugador"
                             )}
 
                         </div>
@@ -1050,8 +1137,11 @@ function renderEvents() {
                 buttonHTML = `
 
                     <button
+
                         class="full-button"
+
                         disabled
+
                     >
 
                         🚫 Completo
@@ -1181,28 +1271,7 @@ function renderEvents() {
 
 
 // ============================================
-// ESCAPAR HTML
-// ============================================
-
-function escapeHTML(text) {
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.textContent =
-        text;
-
-
-    return div.innerHTML;
-
-}
-
-
-// ============================================
-// APUNTARSE
+// APUNTARSE A UN EVENTO
 // ============================================
 
 async function joinEvent(eventId) {
@@ -1264,26 +1333,22 @@ async function joinEvent(eventId) {
 
     }
 
-const playerName =
-    currentProfile.player_name;
 
-const {
-    error
-} =
-    await supabaseClient
-        .from("event_participants")
-        .insert({
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("event_participants")
+            .insert({
 
-            event_id:
-                eventId,
+                event_id:
+                    eventId,
 
-            user_id:
-                currentUser.id,
+                user_id:
+                    currentUser.id
 
-            player_name:
-                playerName
+            });
 
-        });
 
     if (error) {
 
@@ -1309,7 +1374,7 @@ const {
 
 
 // ============================================
-// RETIRARSE
+// RETIRARSE DE UN EVENTO
 // ============================================
 
 async function leaveEvent(eventId) {
@@ -1359,289 +1424,301 @@ async function leaveEvent(eventId) {
 
 }
 
+
 // ============================================
-// BOTÓN CAMBIAR NOMBRE
+// LISTENERS / EVENTOS
 // ============================================
 
-const changeNameButton =
-    document.getElementById(
-        "changeNameButton"
+if (changeNameButton) {
+
+    changeNameButton.addEventListener(
+        "click",
+        changePlayerName
     );
 
-
-changeNameButton.addEventListener(
-    "click",
-    changePlayerName
-);
-
-// ============================================
-// CAMBIAR MES
-// ============================================
-
-previousMonthButton.addEventListener(
-    "click",
-    () => {
-
-        currentDate.setMonth(
-            currentDate.getMonth() - 1
-        );
-
-        renderCalendar();
-
-    }
-);
+}
 
 
-nextMonthButton.addEventListener(
-    "click",
-    () => {
+if (notificationButton) {
 
-        currentDate.setMonth(
-            currentDate.getMonth() + 1
-        );
+    notificationButton.addEventListener(
+        "click",
+        enableNotifications
+    );
 
-        renderCalendar();
-
-    }
-);
+}
 
 
-// ============================================
-// HOY
-// ============================================
+if (previousMonthButton) {
 
-todayButton.addEventListener(
-    "click",
-    () => {
+    previousMonthButton.addEventListener(
+        "click",
+        () => {
 
-        currentDate =
-            new Date();
+            currentDate.setMonth(
+                currentDate.getMonth() - 1
+            );
 
-        renderCalendar();
+            renderCalendar();
 
-    }
-);
+        }
+    );
 
-
-// ============================================
-// ABRIR MODAL
-// ============================================
-
-addEventButton.addEventListener(
-    "click",
-    () => {
-
-        eventModal.classList.remove(
-            "hidden"
-        );
-
-    }
-);
+}
 
 
-// ============================================
-// CERRAR MODAL
-// ============================================
+if (nextMonthButton) {
 
-closeModal.addEventListener(
-    "click",
-    () => {
+    nextMonthButton.addEventListener(
+        "click",
+        () => {
 
-        eventModal.classList.add(
-            "hidden"
-        );
+            currentDate.setMonth(
+                currentDate.getMonth() + 1
+            );
 
-    }
-);
+            renderCalendar();
+
+        }
+    );
+
+}
 
 
-// ============================================
-// CERRAR MODAL AL PULSAR FUERA
-// ============================================
+if (todayButton) {
 
-eventModal.addEventListener(
-    "click",
-    event => {
+    todayButton.addEventListener(
+        "click",
+        () => {
 
-        if (
-            event.target === eventModal
-        ) {
+            currentDate =
+                new Date();
+
+            renderCalendar();
+
+        }
+    );
+
+}
+
+
+if (addEventButton) {
+
+    addEventButton.addEventListener(
+        "click",
+        () => {
+
+            eventModal.classList.remove(
+                "hidden"
+            );
+
+        }
+    );
+
+}
+
+
+if (closeModal) {
+
+    closeModal.addEventListener(
+        "click",
+        () => {
 
             eventModal.classList.add(
                 "hidden"
             );
 
         }
-
-    }
-);
-
-
-// ============================================
-// CREAR EVENTO
-// ============================================
-
-eventForm.addEventListener(
-    "submit",
-    async event => {
-
-        event.preventDefault();
-
-
-        if (!currentUser) {
-
-            alert(
-                "Todavía no estás conectado."
-            );
-
-            return;
-
-        }
-
-
-        const name =
-            document.getElementById(
-                "eventName"
-            ).value;
-
-
-        const type =
-            document.getElementById(
-                "eventType"
-            ).value;
-
-
-        const date =
-            document.getElementById(
-                "eventDate"
-            ).value;
-
-
-        const time =
-            document.getElementById(
-                "eventTime"
-            ).value;
-
-
-        const capacity =
-            Number(
-                document.getElementById(
-                    "eventCapacity"
-                ).value
-            );
-
-
-        const description =
-            document.getElementById(
-                "eventDescription"
-            ).value;
-
-
-        const {
-            error
-        } =
-            await supabaseClient
-                .from("events")
-                .insert({
-
-                    user_id:
-                        currentUser.id,
-
-                    name:
-                        name,
-
-                    type:
-                        type,
-
-                    event_date:
-                        date,
-
-                    event_time:
-                        time,
-
-                    timezone:
-                        getTimezone(),
-
-                    capacity:
-                        capacity,
-
-                    description:
-                        description
-
-                });
-
-
-        if (error) {
-
-            console.error(
-                "Error creando evento:",
-                error
-            );
-
-
-            alert(
-                "No se pudo crear el evento."
-            );
-
-
-            return;
-
-        }
-
-
-        eventForm.reset();
-
-
-        eventModal.classList.add(
-            "hidden"
-        );
-
-
-        await loadEvents();
-
-    }
-);
-
-// ============================================
-// SERVICE WORKER
-// ============================================
-
-if (
-    "serviceWorker" in navigator
-) {
-
-    navigator.serviceWorker
-        .register("sw.js")
-        .then(
-            registration => {
-
-                console.log(
-                    "Service Worker registrado:",
-                    registration.scope
-                );
-
-            }
-        )
-        .catch(
-            error => {
-
-                console.error(
-                    "Error registrando Service Worker:",
-                    error
-                );
-
-            }
-        );
+    );
 
 }
 
+
+if (eventModal) {
+
+    eventModal.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target === eventModal
+            ) {
+
+                eventModal.classList.add(
+                    "hidden"
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+if (eventForm) {
+
+    eventForm.addEventListener(
+        "submit",
+        async event => {
+
+            event.preventDefault();
+
+
+            if (!currentUser) {
+
+                alert(
+                    "Todavía no estás conectado."
+                );
+
+                return;
+
+            }
+
+
+            const name =
+                document.getElementById(
+                    "eventName"
+                ).value;
+
+
+            const type =
+                document.getElementById(
+                    "eventType"
+                ).value;
+
+
+            const date =
+                document.getElementById(
+                    "eventDate"
+                ).value;
+
+
+            const time =
+                document.getElementById(
+                    "eventTime"
+                ).value;
+
+
+            const capacity =
+                Number(
+                    document.getElementById(
+                        "eventCapacity"
+                    ).value
+                );
+
+
+            const description =
+                document.getElementById(
+                    "eventDescription"
+                ).value;
+
+
+            const {
+                error
+            } =
+                await supabaseClient
+                    .from("events")
+                    .insert({
+
+                        user_id:
+                            currentUser.id,
+
+                        name:
+                            name,
+
+                        type:
+                            type,
+
+                        event_date:
+                            date,
+
+                        event_time:
+                            time,
+
+                        timezone:
+                            getTimezone(),
+
+                        capacity:
+                            capacity,
+
+                        description:
+                            description
+
+                    });
+
+
+            if (error) {
+
+                console.error(
+                    "Error creando evento:",
+                    error
+                );
+
+
+                alert(
+                    "No se pudo crear el evento."
+                );
+
+
+                return;
+
+            }
+
+
+            eventForm.reset();
+
+
+            eventModal.classList.add(
+                "hidden"
+            );
+
+
+            await loadEvents();
+
+        }
+    );
+
+}
+
+
 // ============================================
-// INICIAR
+// REGISTRO DE SERVICE WORKER
+// ============================================
+
+if ("serviceWorker" in navigator) {
+
+    navigator.serviceWorker
+        .register("sw.js")
+        .then(registration => {
+
+            console.log(
+                "Service Worker registrado con éxito:",
+                registration.scope
+            );
+
+        })
+        .catch(error => {
+
+            console.error(
+                "Error registrando Service Worker:",
+                error
+            );
+
+        });
+
+}
+
+
+// ============================================
+// INICIALIZACIÓN DE LA APLICACIÓN
 // ============================================
 
 async function startApp() {
 
     showTimezone();
+
+    updateNotificationButton();
 
 
     const connected =
@@ -1655,15 +1732,11 @@ async function startApp() {
     }
 
 
-    // Cargar perfil
-
     await loadProfile();
-
-
-    // Cargar eventos
 
     await loadEvents();
 
 }
+
 
 startApp();
