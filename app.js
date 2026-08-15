@@ -775,6 +775,70 @@ if (changeNameButton) {
 
 }
 
+// ============================================
+// BOTÓN DISCORD
+// ============================================
+
+const discordButton =
+    document.getElementById(
+        "discordButton"
+    );
+
+
+// ============================================
+// ID DE TU APLICACIÓN DISCORD
+// ============================================
+
+const DISCORD_CLIENT_ID =
+    "1538010946130419762";
+
+
+// ============================================
+// URL DE RETORNO DE DISCORD
+// ============================================
+
+const DISCORD_REDIRECT_URI =
+    "https://dofuspediaes.github.io/calendario-gremio/";
+
+
+// ============================================
+// CONECTAR DISCORD
+// ============================================
+
+function connectDiscord() {
+
+    const discordURL =
+        "https://discord.com/oauth2/authorize" +
+        "?client_id=" +
+        encodeURIComponent(
+            DISCORD_CLIENT_ID
+        ) +
+        "&response_type=code" +
+        "&redirect_uri=" +
+        encodeURIComponent(
+            DISCORD_REDIRECT_URI
+        ) +
+        "&scope=identify";
+
+    window.location.href =
+        discordURL;
+
+}
+
+
+// ============================================
+// CLICK EN BOTÓN
+// ============================================
+
+if (discordButton) {
+
+    discordButton.addEventListener(
+        "click",
+        connectDiscord
+    );
+
+}
+
 
 if (notificationButton) {
 
