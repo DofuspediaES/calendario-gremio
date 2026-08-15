@@ -80,6 +80,8 @@ let currentUser = null;
 
 let currentProfile = null;
 
+let editingEventId = null;
+
 
 // ============================================
 // ZONA HORARIA
@@ -488,7 +490,7 @@ function updateNotificationButton() {
 
 
 // ============================================
-// PASO 4: GUARDAR SUSCRIPCIÓN EN SUPABASE
+// GUARDAR SUSCRIPCIÓN EN SUPABASE
 // ============================================
 
 async function subscribeToPush() {
@@ -1067,6 +1069,9 @@ function renderEvents() {
                 );
 
 
+            const isCreator = currentUser && event.user_id === currentUser.id;
+
+
             let participantHTML =
                 "";
 
@@ -1171,6 +1176,21 @@ function renderEvents() {
             }
 
 
+            let creatorButtonsHTML = "";
+            if (isCreator) {
+                creatorButtonsHTML = `
+                    <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                            ✏️ Editar
+                        </button>
+                        <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                `;
+            }
+
+
             card.innerHTML = `
 
                 <div class="event-card-header">
@@ -1255,6 +1275,8 @@ function renderEvents() {
 
                     ${buttonHTML}
 
+                    ${creatorButtonsHTML}
+
                 </div>
 
             `;
@@ -1334,7 +1356,6 @@ async function joinEvent(eventId) {
     }
 
 
-    // TOMA EL NOMBRE GUARDADO EN EL PERFIL
     const playerName =
         currentProfile?.player_name ||
         currentUser.user_metadata?.full_name ||
@@ -1371,6 +1392,63 @@ async function joinEvent(eventId) {
 
     await loadEvents();
 
+}
+
+
+// ============================================
+// ELIMINAR UN EVENTO
+// ============================================
+
+async function deleteEvent(eventId) {
+
+    if (!confirm("¿Estás seguro de que deseas eliminar este evento?")) {
+        return;
+    }
+
+    // 1. Eliminar participantes asociados al evento
+    await supabaseClient
+        .from("event_participants")
+        .delete()
+        .eq("event_id", eventId);
+
+    // 2. Eliminar el evento
+    const { error } = await supabaseClient
+        .from("events")
+        .delete()
+        .eq("id", eventId);
+
+    if (error) {
+        console.error("Error eliminando evento:", error);
+        alert("No se pudo eliminar el evento.");
+        return;
+    }
+
+    await loadEvents();
+}
+
+
+// ============================================
+// ABRIR MODAL PARA EDITAR EVENTO
+// ============================================
+
+function openEditModal(eventId) {
+
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    editingEventId = eventId;
+
+    document.getElementById("eventName").value = event.name;
+    document.getElementById("eventType").value = event.type;
+    document.getElementById("eventDate").value = event.event_date;
+    document.getElementById("eventTime").value = event.event_time;
+    document.getElementById("eventCapacity").value = event.capacity;
+    document.getElementById("eventDescription").value = event.description || "";
+
+    const modalTitle = eventModal.querySelector("h2");
+    if (modalTitle) modalTitle.textContent = "✏️ Editar Evento";
+
+    eventModal.classList.remove("hidden");
 }
 
 
@@ -1509,6 +1587,12 @@ if (addEventButton) {
         "click",
         () => {
 
+            editingEventId = null;
+            eventForm.reset();
+
+            const modalTitle = eventModal.querySelector("h2");
+            if (modalTitle) modalTitle.textContent = "➕ Crear Evento";
+
             eventModal.classList.remove(
                 "hidden"
             );
@@ -1615,50 +1699,46 @@ if (eventForm) {
                 ).value;
 
 
-            const {
-                error
-            } =
-                await supabaseClient
+            const eventData = {
+                user_id: currentUser.id,
+                name: name,
+                type: type,
+                event_date: date,
+                event_time: time,
+                timezone: getTimezone(),
+                capacity: capacity,
+                description: description
+            };
+
+
+            let error;
+
+            if (editingEventId) {
+                // MODO EDICIÓN
+                const res = await supabaseClient
                     .from("events")
-                    .insert({
-
-                        user_id:
-                            currentUser.id,
-
-                        name:
-                            name,
-
-                        type:
-                            type,
-
-                        event_date:
-                            date,
-
-                        event_time:
-                            time,
-
-                        timezone:
-                            getTimezone(),
-
-                        capacity:
-                            capacity,
-
-                        description:
-                            description
-
-                    });
+                    .update(eventData)
+                    .eq("id", editingEventId);
+                error = res.error;
+            } else {
+                // MODO CREACIÓN
+                const res = await supabaseClient
+                    .from("events")
+                    .insert(eventData);
+                error = res.error;
+            }
 
 
             if (error) {
 
                 console.error(
-                    "Error creando evento:",
+                    "Error guardando evento:",
                     error
                 );
 
 
                 alert(
-                    "No se pudo crear el evento."
+                    "No se pudo guardar el evento."
                 );
 
 
@@ -1667,6 +1747,7 @@ if (eventForm) {
             }
 
 
+            editingEventId = null;
             eventForm.reset();
 
 
