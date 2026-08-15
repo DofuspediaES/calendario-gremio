@@ -82,6 +82,22 @@ let currentProfile = null;
 
 let editingEventId = null;
 
+// ============================================
+// FILTROS GLOBALES
+// ============================================
+
+let currentViewFilter = "upcoming"; // 'upcoming', 'my_events', 'past'
+let currentCategoryFilter = "all";  // 'all', 'raid', 'dungeon', 'quest', etc.
+
+
+// Comprueba si la fecha y hora del evento ya pasaron respecto al momento actual
+function isPastEvent(eventDate, eventTime) {
+    if (!eventDate) return false;
+    const eventTimeStr = eventTime || "23:59";
+    const eventDateTime = new Date(`${eventDate}T${eventTimeStr}`);
+    return eventDateTime < new Date();
+}
+
 
 // ============================================
 // ZONA HORARIA
@@ -1030,267 +1046,135 @@ function renderCalendar() {
 
 
 // ============================================
-// MOSTRAR TARJETAS DE EVENTOS
+// MOSTRAR TARJETAS DE EVENTOS (CON FILTROS)
 // ============================================
 
 function renderEvents() {
-
     if (!eventsList) return;
-
     eventsList.innerHTML = "";
 
-
-    events.forEach(
-        event => {
-
-            const card =
-                document.createElement(
-                    "div"
-                );
-
-
-            card.className =
-                "event-card";
-
-
-            const eventParticipants =
-                getEventParticipants(
-                    event.id
-                );
-
-
-            const count =
-                eventParticipants.length;
-
-
-            const joined =
-                isJoined(
-                    event.id
-                );
-
-
-            const isCreator = currentUser && event.user_id === currentUser.id;
-
-
-            let participantHTML =
-                "";
-
-
-            eventParticipants.forEach(
-                participant => {
-
-                    participantHTML += `
-
-                        <div class="participant">
-
-                            ✅
-
-                            ${escapeHTML(
-                                participant.player_name || "Jugador"
-                            )}
-
-                        </div>
-
-                    `;
-
-                }
-            );
-
-
-            if (
-                eventParticipants.length === 0
-            ) {
-
-                participantHTML = `
-
-                    <div class="no-participants">
-
-                        Todavía nadie se ha apuntado.
-
-                    </div>
-
-                `;
-
-            }
-
-
-            let buttonHTML;
-
-
-            if (joined) {
-
-                buttonHTML = `
-
-                    <button
-
-                        class="leave-button"
-
-                        onclick="leaveEvent(${event.id})"
-
-                    >
-
-                        🔴 Retirarme
-
-                    </button>
-
-                `;
-
-            } else if (
-                count >= event.capacity
-            ) {
-
-                buttonHTML = `
-
-                    <button
-
-                        class="full-button"
-
-                        disabled
-
-                    >
-
-                        🚫 Completo
-
-                    </button>
-
-                `;
-
-            } else {
-
-                buttonHTML = `
-
-                    <button
-
-                        class="join-button"
-
-                        onclick="joinEvent(${event.id})"
-
-                    >
-
-                        🟢 Apuntarme
-
-                    </button>
-
-                `;
-
-            }
-
-
-            let creatorButtonsHTML = "";
-            if (isCreator) {
-                creatorButtonsHTML = `
-                    <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                        <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                            ✏️ Editar
-                        </button>
-                        <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                            🗑️ Eliminar
-                        </button>
-                    </div>
-                `;
-            }
-
-
-            card.innerHTML = `
-
-                <div class="event-card-header">
-
-                    <div>
-
-                        <h3>
-
-                            ${getEventIcon(
-                                event.type
-                            )}
-
-                            ${escapeHTML(
-                                event.name
-                            )}
-
-                        </h3>
-
-
-                        <div class="event-info">
-
-                            📅
-
-                            ${formatDate(
-                                new Date(
-                                    `${event.event_date}T12:00:00`
-                                )
-                            )}
-
-                            &nbsp;&nbsp;
-
-                            🕐
-
-                            ${formatTime(
-                                event.event_time
-                            )}
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="capacity">
-
-                        👥
-
-                        ${count}/${event.capacity}
-
-                    </div>
-
-                </div>
-
-
-                <div class="event-info">
-
-                    ${escapeHTML(
-                        event.description || ""
-                    )}
-
-                </div>
-
-
-                <div class="participants-box">
-
-                    <strong>
-
-                        👥 Participantes
-
-                    </strong>
-
-
-                    <div class="participants-list">
-
-                        ${participantHTML}
-
-                    </div>
-
-                </div>
-
-
-                <div class="event-actions">
-
-                    ${buttonHTML}
-
-                    ${creatorButtonsHTML}
-
-                </div>
-
-            `;
-
-
-            eventsList.appendChild(
-                card
-            );
-
+    // 1. Filtrado dinámico
+    const filteredEvents = events.filter(event => {
+        const isPast = isPastEvent(event.event_date, event.event_time);
+
+        // Filtro 1: Pestaña (Próximos / Mis Eventos / Histórico)
+        if (currentViewFilter === "upcoming" && isPast) return false;
+        if (currentViewFilter === "past" && !isPast) return false;
+        if (currentViewFilter === "my_events" && (!isJoined(event.id) || isPast)) return false;
+
+        // Filtro 2: Categoría / Tipo
+        if (currentCategoryFilter !== "all" && event.type !== currentCategoryFilter) {
+            return false;
         }
-    );
 
+        return true;
+    });
+
+    // Mensaje si la lista queda vacía tras filtrar
+    if (filteredEvents.length === 0) {
+        let emptyMessage = "No hay eventos en esta categoría.";
+        if (currentViewFilter === "my_events") emptyMessage = "No te has apuntado a ningún evento próximo.";
+        if (currentViewFilter === "past") emptyMessage = "No hay eventos pasados en el historial.";
+
+        eventsList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #888;">
+                <p style="font-size: 1.1rem;">${emptyMessage}</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 2. Renderizar cada evento filtrado
+    filteredEvents.forEach(event => {
+        const card = document.createElement("div");
+        card.className = "event-card";
+
+        const isPast = isPastEvent(event.event_date, event.event_time);
+        if (isPast) {
+            card.classList.add("event-past"); // Para aplicar opacidad o estilos de evento finalizado
+        }
+
+        const eventParticipants = getEventParticipants(event.id);
+        const count = eventParticipants.length;
+        const joined = isJoined(event.id);
+        const isCreator = currentUser && event.user_id === currentUser.id;
+
+        let participantHTML = "";
+        eventParticipants.forEach(participant => {
+            participantHTML += `
+                <div class="participant">
+                    ✅ ${escapeHTML(participant.player_name || "Jugador")}
+                </div>
+            `;
+        });
+
+        if (eventParticipants.length === 0) {
+            participantHTML = `<div class="no-participants">Todavía nadie se ha apuntado.</div>`;
+        }
+
+        // Configuración de botones según el estado
+        let buttonHTML;
+        if (isPast) {
+            buttonHTML = `<button class="full-button" disabled style="opacity: 0.6;">🏁 Evento Finalizado</button>`;
+        } else if (joined) {
+            buttonHTML = `<button class="leave-button" onclick="leaveEvent(${event.id})">🔴 Retirarme</button>`;
+        } else if (count >= event.capacity) {
+            buttonHTML = `<button class="full-button" disabled>🚫 Completo</button>`;
+        } else {
+            buttonHTML = `<button class="join-button" onclick="joinEvent(${event.id})">🟢 Apuntarme</button>`;
+        }
+
+        let creatorButtonsHTML = "";
+        if (isCreator && !isPast) {
+            creatorButtonsHTML = `
+                <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+                    <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        ✏️ Editar
+                    </button>
+                    <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="event-card-header">
+                <div>
+                    <h3>
+                        ${getEventIcon(event.type)}
+                        ${escapeHTML(event.name)}
+                    </h3>
+                    <div class="event-info">
+                        📅 ${formatDate(new Date(`${event.event_date}T12:00:00`))} &nbsp;&nbsp;
+                        🕐 ${formatTime(event.event_time)}
+                    </div>
+                </div>
+                <div class="capacity">
+                    👥 ${count}/${event.capacity}
+                </div>
+            </div>
+
+            <div class="event-info">
+                ${escapeHTML(event.description || "")}
+            </div>
+
+            <div class="participants-box">
+                <strong>👥 Participantes</strong>
+                <div class="participants-list">
+                    ${participantHTML}
+                </div>
+            </div>
+
+            <div class="event-actions">
+                ${buttonHTML}
+                ${creatorButtonsHTML}
+            </div>
+        `;
+
+        eventsList.appendChild(card);
+    });
 }
-
 
 // ============================================
 // APUNTARSE A UN EVENTO
@@ -1761,6 +1645,26 @@ if (eventForm) {
         }
     );
 
+}
+
+// Pestañas de Vista (Próximos / Mis Eventos / Histórico)
+document.querySelectorAll(".filter-tab").forEach(tab => {
+    tab.addEventListener("click", event => {
+        document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+        event.target.classList.add("active");
+
+        currentViewFilter = event.target.dataset.view;
+        renderEvents();
+    });
+});
+
+// Selector de Categoría (Raids, Mazmorras, etc.)
+const categoryFilterSelect = document.getElementById("categoryFilterSelect");
+if (categoryFilterSelect) {
+    categoryFilterSelect.addEventListener("change", event => {
+        currentCategoryFilter = event.target.value;
+        renderEvents();
+    });
 }
 
 
