@@ -1449,6 +1449,19 @@ if (addEventButton) {
             editingEventId = null;
             eventForm.reset();
 
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // Obtener la fecha de hoy en formato AAAA-MM-DD
+            const todayStr = new Date().toISOString().split('T')[0];
+            const eventDateInput = document.getElementById('eventDate');
+            
+            if (eventDateInput) {
+                // Bloquea los días pasados en el calendario visual
+                eventDateInput.min = todayStr;
+                // Asigna por defecto la fecha de hoy
+                eventDateInput.value = todayStr;
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
+
             const modalTitle = eventModal.querySelector("h2");
             if (modalTitle) modalTitle.textContent = "➕ Crear Evento";
 
@@ -1542,6 +1555,18 @@ if (eventForm) {
                 document.getElementById(
                     "eventTime"
                 ).value;
+
+
+            // 🔒 VALIDACIÓN DE FECHA Y HORA PASADA
+            const selectedDateTime = new Date(`${date}T${time}`);
+            const currentDateTime = new Date();
+
+            if (selectedDateTime < currentDateTime) {
+                alert(
+                    "⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado."
+                );
+                return;
+            }
 
 
             const capacity =
