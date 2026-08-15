@@ -195,7 +195,7 @@ textarea {
 
 
 /* =========================
-   EVENTOS DENTRO DEL DÍA
+   EVENTOS DENTRO DEL DÍA (CUADRÍCULA)
 ========================= */
 
 .calendar-event {
@@ -207,27 +207,53 @@ textarea {
 
     background: #303030;
 
-    border-left: 3px solid #4738ff;
+    border-left: 3px solid #7f8c8d; /* Por defecto */
 
     font-size: 11px;
 
     overflow: hidden;
+
+    transition: border-color 0.2s ease;
 }
 
-.calendar-event.raid {
-    border-left-color: #ff5555;
+.calendar-event.dungeon,
+.calendar-event.type-dungeon {
+    border-left-color: #9b59b6; /* 🗝️ Púrpura */
 }
 
-.calendar-event.dungeon {
-    border-left-color: #55aaff;
+.calendar-event.quest,
+.calendar-event.type-quest {
+    border-left-color: #2ecc71; /* 🗺️ Verde */
 }
 
-.calendar-event.quest {
-    border-left-color: #c86bff;
+.calendar-event.infinite_dreams,
+.calendar-event.type-infinite_dreams {
+    border-left-color: #00d2d3; /* 🌀 Turquesa */
 }
 
-.calendar-event.farm {
-    border-left-color: #ffc84d;
+.calendar-event.commission,
+.calendar-event.type-commission {
+    border-left-color: #e67e22; /* 📦 Naranja */
+}
+
+.calendar-event.raid,
+.calendar-event.type-raid {
+    border-left-color: #e74c3c; /* ⚔️ Rojo */
+}
+
+.calendar-event.farm,
+.calendar-event.type-farm {
+    border-left-color: #f1c40f; /* 💰 Amarillo / Dorado */
+}
+
+.calendar-event.wanted,
+.calendar-event.type-wanted {
+    border-left-color: #d35400; /* 📜 Marrón / Terracota */
+}
+
+.calendar-event.other,
+.calendar-event.type-other {
+    border-left-color: #7f8c8d; /* 🎲 Gris */
 }
 
 .event-time {
@@ -255,7 +281,7 @@ textarea {
 
 
 /* =========================
-   LISTA DE EVENTOS
+   LISTA DE EVENTOS Y BARRITAS DE COLOR
 ========================= */
 
 .events-section {
@@ -293,11 +319,56 @@ textarea {
 
     border: 1px solid #444;
 
+    border-left: 6px solid #7f8c8d; /* Color por defecto */
+
     border-radius: 8px;
 
     padding: 15px;
 
     margin-bottom: 10px;
+
+    transition: border-color 0.3s ease;
+}
+
+/* Colores para las tarjetas según el tipo */
+.event-card.type-dungeon,
+.event-card.dungeon {
+    border-left-color: #9b59b6; /* 🗝️ Púrpura */
+}
+
+.event-card.type-quest,
+.event-card.quest {
+    border-left-color: #2ecc71; /* 🗺️ Verde */
+}
+
+.event-card.type-infinite_dreams,
+.event-card.infinite_dreams {
+    border-left-color: #00d2d3; /* 🌀 Turquesa */
+}
+
+.event-card.type-commission,
+.event-card.commission {
+    border-left-color: #e67e22; /* 📦 Naranja */
+}
+
+.event-card.type-raid,
+.event-card.raid {
+    border-left-color: #e74c3c; /* ⚔️ Rojo */
+}
+
+.event-card.type-farm,
+.event-card.farm {
+    border-left-color: #f1c40f; /* 💰 Amarillo / Dorado */
+}
+
+.event-card.type-wanted,
+.event-card.wanted {
+    border-left-color: #d35400; /* 📜 Marrón / Terracota */
+}
+
+.event-card.type-other,
+.event-card.other {
+    border-left-color: #7f8c8d; /* 🎲 Gris */
 }
 
 .event-card-header {
@@ -683,7 +754,7 @@ textarea {
 }
 
 .filter-tab.active {
-    background: #e74c3c; /* o el color principal de tu gremio */
+    background: #e74c3c;
     color: #fff;
     border-color: #e74c3c;
     font-weight: bold;
