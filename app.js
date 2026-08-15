@@ -7,79 +7,43 @@
 // SUPABASE
 // ============================================
 
-const SUPABASE_URL =
-    "https://nmmetzityubqbrbpibee.supabase.co";
+const SUPABASE_URL = "https://nmmetzityubqbrbpibee.supabase.co";
+const SUPABASE_KEY = "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
 
-const SUPABASE_KEY =
-    "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
-
-
-const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 
 
 // ============================================
 // ELEMENTOS DEL DOM
 // ============================================
 
-const calendar =
-    document.getElementById("calendar");
-
-const monthTitle =
-    document.getElementById("monthTitle");
-
-const previousMonthButton =
-    document.getElementById("previousMonth");
-
-const nextMonthButton =
-    document.getElementById("nextMonth");
-
-const todayButton =
-    document.getElementById("todayButton");
-
-const timezoneName =
-    document.getElementById("timezoneName");
-
-const eventsList =
-    document.getElementById("eventsList");
-
-const addEventButton =
-    document.getElementById("addEventButton");
-
-const eventModal =
-    document.getElementById("eventModal");
-
-const closeModal =
-    document.getElementById("closeModal");
-
-const eventForm =
-    document.getElementById("eventForm");
-
-const notificationButton =
-    document.getElementById("notificationButton");
-
-const changeNameButton =
-    document.getElementById("changeNameButton");
+const calendar = document.getElementById("calendar");
+const monthTitle = document.getElementById("monthTitle");
+const previousMonthButton = document.getElementById("previousMonth");
+const nextMonthButton = document.getElementById("nextMonth");
+const todayButton = document.getElementById("todayButton");
+const timezoneName = document.getElementById("timezoneName");
+const eventsList = document.getElementById("eventsList");
+const addEventButton = document.getElementById("addEventButton");
+const eventModal = document.getElementById("eventModal");
+const closeModal = document.getElementById("closeModal");
+const eventForm = document.getElementById("eventForm");
+const notificationButton = document.getElementById("notificationButton");
+const changeNameButton = document.getElementById("changeNameButton");
 
 
 // ============================================
 // VARIABLES GLOBALES
 // ============================================
 
-let currentDate =
-    new Date();
-
+let currentDate = new Date();
 let events = [];
-
 let participants = [];
-
 let currentUser = null;
-
 let currentProfile = null;
-
 let editingEventId = null;
 
 // ============================================
@@ -104,20 +68,13 @@ function isPastEvent(eventDate, eventTime) {
 // ============================================
 
 function getTimezone() {
-
-    return Intl.DateTimeFormat()
-        .resolvedOptions()
-        .timeZone;
-
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-
 function showTimezone() {
-
     if (timezoneName) {
         timezoneName.textContent = getTimezone();
     }
-
 }
 
 
@@ -126,70 +83,25 @@ function showTimezone() {
 // ============================================
 
 async function loginAnonymous() {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
 
-    const {
-        data: sessionData
-    } =
-        await supabaseClient.auth.getSession();
-
-
-    if (
-        sessionData &&
-        sessionData.session &&
-        sessionData.session.user
-    ) {
-
-        currentUser =
-            sessionData.session.user;
-
-
-        console.log(
-            "Sesión existente:",
-            currentUser.id
-        );
-
-
+    if (sessionData && sessionData.session && sessionData.session.user) {
+        currentUser = sessionData.session.user;
+        console.log("Sesión existente:", currentUser.id);
         return true;
-
     }
 
-
-    const {
-        data,
-        error
-    } =
-        await supabaseClient.auth
-            .signInAnonymously();
-
+    const { data, error } = await supabaseClient.auth.signInAnonymously();
 
     if (error) {
-
-        console.error(
-            "Error iniciando sesión:",
-            error
-        );
-
-        alert(
-            "No se pudo conectar con Supabase."
-        );
-
+        console.error("Error iniciando sesión:", error);
+        alert("No se pudo conectar con Supabase.");
         return false;
-
     }
 
-
-    currentUser =
-        data.user;
-
-
-    console.log(
-        "Nuevo usuario:",
-        currentUser.id
-    );
-
-
+    currentUser = data.user;
+    console.log("Nuevo usuario:", currentUser.id);
     return true;
-
 }
 
 
@@ -198,110 +110,49 @@ async function loginAnonymous() {
 // ============================================
 
 async function loadProfile() {
+    if (!currentUser) return;
 
-    if (!currentUser) {
-
-        return;
-
-    }
-
-
-    const {
-        data,
-        error
-    } =
-        await supabaseClient
-            .from("profiles")
-            .select("*")
-            .eq(
-                "id",
-                currentUser.id
-            )
-            .maybeSingle();
-
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
 
     if (error) {
-
-        console.error(
-            "Error cargando perfil:",
-            error
-        );
-
+        console.error("Error cargando perfil:", error);
         return;
-
     }
-
 
     if (!data) {
+        const playerName = prompt("¿Cuál es tu nombre dentro del gremio?");
 
-        const playerName =
-            prompt(
-                "¿Cuál es tu nombre dentro del gremio?"
-            );
-
-
-        if (
-            !playerName ||
-            !playerName.trim()
-        ) {
-
-            alert(
-                "Necesitas poner un nombre."
-            );
-
+        if (!playerName || !playerName.trim()) {
+            alert("Necesitas poner un nombre.");
             return;
-
         }
 
+        const cleanName = playerName.trim();
 
-        const cleanName =
-            playerName.trim();
-
-
-        const {
-            data: newProfile,
-            error: createError
-        } =
-            await supabaseClient
-                .from("profiles")
-                .insert({
-
-                    id:
-                        currentUser.id,
-
-                    player_name:
-                        cleanName
-
-                })
-                .select()
-                .single();
-
+        const { data: newProfile, error: createError } = await supabaseClient
+            .from("profiles")
+            .insert({
+                id: currentUser.id,
+                player_name: cleanName
+            })
+            .select()
+            .single();
 
         if (createError) {
-
-            console.error(
-                "Error creando perfil:",
-                createError
-            );
-
+            console.error("Error creando perfil:", createError);
             return;
-
         }
 
-
-        currentProfile =
-            newProfile;
-
+        currentProfile = newProfile;
     } else {
-
-        currentProfile =
-            data;
-
+        currentProfile = data;
     }
 
-
     updateProfileDisplay();
-
 }
 
 
@@ -310,26 +161,10 @@ async function loadProfile() {
 // ============================================
 
 function updateProfileDisplay() {
+    const display = document.getElementById("playerNameDisplay");
+    if (!display || !currentProfile) return;
 
-    const display =
-        document.getElementById(
-            "playerNameDisplay"
-        );
-
-
-    if (
-        !display ||
-        !currentProfile
-    ) {
-
-        return;
-
-    }
-
-
-    display.textContent =
-        `👤 ${currentProfile.player_name}`;
-
+    display.textContent = `👤 ${currentProfile.player_name}`;
 }
 
 
@@ -338,83 +173,31 @@ function updateProfileDisplay() {
 // ============================================
 
 async function changePlayerName() {
+    if (!currentUser || !currentProfile) return;
 
-    if (
-        !currentUser ||
-        !currentProfile
-    ) {
+    const newName = prompt("Nuevo nombre del jugador:", currentProfile.player_name);
+    if (!newName || !newName.trim()) return;
 
-        return;
+    const cleanName = newName.trim();
 
-    }
-
-
-    const newName =
-        prompt(
-            "Nuevo nombre del jugador:",
-            currentProfile.player_name
-        );
-
-
-    if (
-        !newName ||
-        !newName.trim()
-    ) {
-
-        return;
-
-    }
-
-
-    const cleanName =
-        newName.trim();
-
-
-    const {
-        data,
-        error
-    } =
-        await supabaseClient
-            .from("profiles")
-            .update({
-
-                player_name:
-                    cleanName,
-
-                updated_at:
-                    new Date().toISOString()
-
-            })
-            .eq(
-                "id",
-                currentUser.id
-            )
-            .select()
-            .single();
-
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .update({
+            player_name: cleanName,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", currentUser.id)
+        .select()
+        .single();
 
     if (error) {
-
-        console.error(
-            "Error cambiando nombre:",
-            error
-        );
-
-        alert(
-            "No se pudo cambiar el nombre."
-        );
-
+        console.error("Error cambiando nombre:", error);
+        alert("No se pudo cambiar el nombre.");
         return;
-
     }
 
-
-    currentProfile =
-        data;
-
-
+    currentProfile = data;
     updateProfileDisplay();
-
 }
 
 
@@ -424,84 +207,41 @@ async function changePlayerName() {
 
 const VAPID_PUBLIC_KEY = "BOK3lrJGlltGR-5pN81n13l4t9u0cvvrphSXQ6VyjExqv2cEOtuymqqJcwSaHsiw0-4s4I3miJGA16EeoXX6bm0";
 
-
 function urlBase64ToUint8Array(base64String) {
-
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
-
     const base64 = (base64String + padding)
         .replace(/\-/g, '+')
         .replace(/_/g, '/');
 
     const rawData = window.atob(base64);
-
     const outputArray = new Uint8Array(rawData.length);
 
-
     for (let i = 0; i < rawData.length; ++i) {
-
         outputArray[i] = rawData.charCodeAt(i);
-
     }
-
     return outputArray;
-
 }
 
-
 function updateNotificationButton() {
+    if (!notificationButton) return;
 
-    if (!notificationButton) {
-
+    if (!("Notification" in window)) {
+        notificationButton.textContent = "❌ No compatible";
+        notificationButton.disabled = true;
         return;
-
     }
 
-
-    if (
-        !("Notification" in window)
-    ) {
-
-        notificationButton.textContent =
-            "❌ No compatible";
-
-        notificationButton.disabled =
-            true;
-
+    if (Notification.permission === "granted") {
+        notificationButton.textContent = "🔔 Notificaciones activadas";
         return;
-
     }
 
-
-    if (
-        Notification.permission ===
-        "granted"
-    ) {
-
-        notificationButton.textContent =
-            "🔔 Notificaciones activadas";
-
+    if (Notification.permission === "denied") {
+        notificationButton.textContent = "🚫 Notificaciones bloqueadas";
         return;
-
     }
 
-
-    if (
-        Notification.permission ===
-        "denied"
-    ) {
-
-        notificationButton.textContent =
-            "🚫 Notificaciones bloqueadas";
-
-        return;
-
-    }
-
-
-    notificationButton.textContent =
-        "🔔 Activar notificaciones";
-
+    notificationButton.textContent = "🔔 Activar notificaciones";
 }
 
 
@@ -510,78 +250,44 @@ function updateNotificationButton() {
 // ============================================
 
 async function subscribeToPush() {
-
     if (!("serviceWorker" in navigator) || !currentUser) return;
 
-
     try {
-
         const registration = await navigator.serviceWorker.ready;
-
-
         let subscription = await registration.pushManager.getSubscription();
 
-
         if (!subscription) {
-
             const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-
             subscription = await registration.pushManager.subscribe({
-
                 userVisibleOnly: true,
-
                 applicationServerKey: convertedKey
-
             });
-
         }
-
 
         const jsonSub = subscription.toJSON();
 
-
         const { error } = await supabaseClient
-
             .from("push_subscriptions")
-
             .upsert({
-
                 user_id: currentUser.id,
-
                 endpoint: jsonSub.endpoint,
-
                 p256dh: jsonSub.keys ? jsonSub.keys.p256dh : "",
-
                 auth: jsonSub.keys ? jsonSub.keys.auth : "",
-
                 updated_at: new Date().toISOString()
-
             }, {
-
                 onConflict: "user_id, endpoint"
-
             });
 
-
         if (error) {
-
             console.error("Error guardando suscripción en Supabase:", error);
-
         } else {
-
             console.log("Suscripción Push guardada correctamente en Supabase.");
-
         }
 
-
     } catch (err) {
-
         console.error("Error al suscribir a notificaciones Push:", err);
-
     }
-
 }
-
 
 async function enableNotifications() {
     if (!("Notification" in window)) {
@@ -589,23 +295,18 @@ async function enableNotifications() {
         return;
     }
 
-    // 1. SI YA ESTÁ GRANTED (Ya estaban activadas)
     if (Notification.permission === "granted") {
         alert("✅ Las notificaciones ya están activadas en este navegador.");
-        
-        // Re-sincronizamos la suscripción por si acaso
         await subscribeToPush();
         return;
     }
 
-    // 2. SI ESTÁ DENIED (El usuario las bloqueó previamente)
     if (Notification.permission === "denied") {
         alert("🚫 Las notificaciones están bloqueadas en tu navegador.\n\nPara activarlas, debes hacer clic en el candado 🔒 al lado de la URL y permitir los permisos de Notificaciones.");
         updateNotificationButton();
         return;
     }
 
-    // 3. SI AÚN NO HA DECIDIDO (Pide permiso por primera vez)
     const permission = await Notification.requestPermission();
 
     if (permission === "granted") {
@@ -624,51 +325,22 @@ async function enableNotifications() {
 // ============================================
 
 async function loadEvents() {
-
-    const {
-        data,
-        error
-    } =
-        await supabaseClient
-            .from("events")
-            .select("*")
-            .order(
-                "event_date",
-                {
-                    ascending: true
-                }
-            )
-            .order(
-                "event_time",
-                {
-                    ascending: true
-                }
-            );
-
+    const { data, error } = await supabaseClient
+        .from("events")
+        .select("*")
+        .order("event_date", { ascending: true })
+        .order("event_time", { ascending: true });
 
     if (error) {
-
-        console.error(
-            "Error cargando eventos:",
-            error
-        );
-
+        console.error("Error cargando eventos:", error);
         return;
-
     }
 
-
-    events =
-        data || [];
-
-
+    events = data || [];
     await loadParticipants();
 
-
     renderCalendar();
-
     renderEvents();
-
 }
 
 
@@ -677,31 +349,16 @@ async function loadEvents() {
 // ============================================
 
 async function loadParticipants() {
-
-    const {
-        data,
-        error
-    } =
-        await supabaseClient
-            .from("event_participants")
-            .select("*");
-
+    const { data, error } = await supabaseClient
+        .from("event_participants")
+        .select("*");
 
     if (error) {
-
-        console.error(
-            "Error cargando participantes:",
-            error
-        );
-
+        console.error("Error cargando participantes:", error);
         return;
-
     }
 
-
-    participants =
-        data || [];
-
+    participants = data || [];
 }
 
 
@@ -710,48 +367,22 @@ async function loadParticipants() {
 // ============================================
 
 function formatDate(date) {
-
-    return date.toLocaleDateString(
-        "es-ES",
-        {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-        }
-    );
-
+    return date.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
 }
 
-
 function formatTime(time) {
+    const [hours, minutes] = time.split(":");
+    const date = new Date();
+    date.setHours(Number(hours), Number(minutes), 0, 0);
 
-    const [
-        hours,
-        minutes
-    ] =
-        time.split(":");
-
-
-    const date =
-        new Date();
-
-
-    date.setHours(
-        Number(hours),
-        Number(minutes),
-        0,
-        0
-    );
-
-
-    return date.toLocaleTimeString(
-        "es-ES",
-        {
-            hour: "2-digit",
-            minute: "2-digit"
-        }
-    );
-
+    return date.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
 }
 
 
@@ -770,48 +401,24 @@ function getEventIcon(type) {
         wanted: "📜",
         other: "🎲"
     };
-
     return icons[type] || "🎲";
 }
 
-
 function getEventParticipants(eventId) {
-
-    return participants.filter(
-        participant =>
-            participant.event_id === eventId
-    );
-
+    return participants.filter(participant => participant.event_id === eventId);
 }
-
 
 function isJoined(eventId) {
-
     if (!currentUser) return false;
-
     return participants.some(
-        participant =>
-            participant.event_id === eventId &&
-            participant.user_id === currentUser.id
+        participant => participant.event_id === eventId && participant.user_id === currentUser.id
     );
-
 }
 
-
 function escapeHTML(text) {
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.textContent =
-        text;
-
-
+    const div = document.createElement("div");
+    div.textContent = text;
     return div.innerHTML;
-
 }
 
 
@@ -820,203 +427,71 @@ function escapeHTML(text) {
 // ============================================
 
 function renderCalendar() {
-
     if (!calendar) return;
 
     calendar.innerHTML = "";
 
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
 
-    const year =
-        currentDate.getFullYear();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
 
-    const month =
-        currentDate.getMonth();
-
-
-    const firstDay =
-        new Date(
-            year,
-            month,
-            1
-        );
-
-
-    const lastDay =
-        new Date(
-            year,
-            month + 1,
-            0
-        );
-
-
-    let startDay =
-        firstDay.getDay();
-
-
-    if (startDay === 0) {
-
-        startDay = 7;
-
-    }
-
+    let startDay = firstDay.getDay();
+    if (startDay === 0) startDay = 7;
 
     // DÍAS VACÍOS
-
-    for (
-        let i = 1;
-        i < startDay;
-        i++
-    ) {
-
-        const emptyDay =
-            document.createElement(
-                "div"
-            );
-
-
-        emptyDay.className =
-            "day empty";
-
-
-        calendar.appendChild(
-            emptyDay
-        );
-
+    for (let i = 1; i < startDay; i++) {
+        const emptyDay = document.createElement("div");
+        emptyDay.className = "day empty";
+        calendar.appendChild(emptyDay);
     }
 
-
     // DÍAS DEL MES
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dayElement = document.createElement("div");
+        dayElement.className = "day";
 
-    for (
-        let day = 1;
-        day <= lastDay.getDate();
-        day++
-    ) {
+        const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-        const dayElement =
-            document.createElement(
-                "div"
-            );
-
-
-        dayElement.className =
-            "day";
-
-
-        const dateString =
-            `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-
-        // DÍA DE HOY
-
-        const today =
-            new Date();
-
-
+        const today = new Date();
         if (
             today.getFullYear() === year &&
             today.getMonth() === month &&
             today.getDate() === day
         ) {
-
-            dayElement.classList.add(
-                "today"
-            );
-
+            dayElement.classList.add("today");
         }
 
+        const dayNumber = document.createElement("div");
+        dayNumber.className = "day-number";
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
 
-        // NÚMERO DE DÍA
+        const dayEvents = events.filter(event => event.event_date === dateString);
 
-        const dayNumber =
-            document.createElement(
-                "div"
-            );
+        dayEvents.forEach(event => {
+            const eventElement = document.createElement("div");
+            eventElement.className = `calendar-event ${event.type}`;
+            eventElement.innerHTML = `
+                <span class="event-time">
+                    ${formatTime(event.event_time)}
+                </span>
+                ${getEventIcon(event.type)}
+                ${escapeHTML(event.name)}
+            `;
+            dayElement.appendChild(eventElement);
+        });
 
-
-        dayNumber.className =
-            "day-number";
-
-
-        dayNumber.textContent =
-            day;
-
-
-        dayElement.appendChild(
-            dayNumber
-        );
-
-
-        // EVENTOS DEL DÍA
-
-        const dayEvents =
-            events.filter(
-                event =>
-                    event.event_date ===
-                    dateString
-            );
-
-
-        dayEvents.forEach(
-            event => {
-
-                const eventElement =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                eventElement.className =
-                    `calendar-event ${event.type}`;
-
-
-                eventElement.innerHTML = `
-
-                    <span class="event-time">
-
-                        ${formatTime(
-                            event.event_time
-                        )}
-
-                    </span>
-
-                    ${getEventIcon(
-                        event.type
-                    )}
-
-                    ${escapeHTML(event.name)}
-
-                `;
-
-
-                dayElement.appendChild(
-                    eventElement
-                );
-
-            }
-        );
-
-
-        calendar.appendChild(
-            dayElement
-        );
-
+        calendar.appendChild(dayElement);
     }
-
 
     if (monthTitle) {
-
-        monthTitle.textContent =
-            currentDate.toLocaleDateString(
-                "es-ES",
-                {
-                    month: "long",
-                    year: "numeric"
-                }
-            );
-
+        monthTitle.textContent = currentDate.toLocaleDateString("es-ES", {
+            month: "long",
+            year: "numeric"
+        });
     }
-
 }
 
 
@@ -1024,7 +499,6 @@ function renderCalendar() {
 // MOSTRAR TARJETAS DE EVENTOS (CON FILTROS)
 // ============================================
 
-// 1. Diccionario con los nombres de las actividades (colócalo arriba de renderEvents)
 const EVENT_TYPE_NAMES = {
     dungeon: "Mazmorra",
     quest: "Misión",
@@ -1036,21 +510,17 @@ const EVENT_TYPE_NAMES = {
     other: "Otro"
 };
 
-// 2. Función completa para reemplazar la tuya:
 function renderEvents() {
     if (!eventsList) return;
     eventsList.innerHTML = "";
 
-    // 1. Filtrado dinámico
     const filteredEvents = events.filter(event => {
         const isPast = isPastEvent(event.event_date, event.event_time);
 
-        // Filtro 1: Pestaña (Próximos / Mis Eventos / Histórico)
         if (currentViewFilter === "upcoming" && isPast) return false;
         if (currentViewFilter === "past" && !isPast) return false;
         if (currentViewFilter === "my_events" && (!isJoined(event.id) || isPast)) return false;
 
-        // Filtro 2: Categoría / Tipo
         if (currentCategoryFilter !== "all" && event.type !== currentCategoryFilter) {
             return false;
         }
@@ -1058,7 +528,6 @@ function renderEvents() {
         return true;
     });
 
-    // Mensaje si la lista queda vacía tras filtrar
     if (filteredEvents.length === 0) {
         let emptyMessage = "No hay eventos en esta categoría.";
         if (currentViewFilter === "my_events") emptyMessage = "No te has apuntado a ningún evento próximo.";
@@ -1072,11 +541,9 @@ function renderEvents() {
         return;
     }
 
-    // 2. Renderizar cada evento filtrado
     filteredEvents.forEach(event => {
         const card = document.createElement("div");
 
-        /* 👈 AQUÍ VA EL PRIMER CÓDIGO (Asigna clase del tipo para pintar el borde) */
         const eventType = event.type || "other";
         card.className = `event-card ${eventType} type-${eventType}`;
 
@@ -1103,7 +570,6 @@ function renderEvents() {
             participantHTML = `<div class="no-participants">Todavía nadie se ha apuntado.</div>`;
         }
 
-        // Configuración de botones según el estado
         let buttonHTML;
         if (isPast) {
             buttonHTML = `<button class="full-button" disabled style="opacity: 0.6;">🏁 Evento Finalizado</button>`;
@@ -1129,13 +595,11 @@ function renderEvents() {
             `;
         }
 
-        /* 👈 AQUÍ OBTENEMOS EL NOMBRE DE LA ACTIVIDAD */
         const typeLabel = EVENT_TYPE_NAMES[eventType] || eventType;
 
         card.innerHTML = `
             <div class="event-card-header">
                 <div>
-                    <!-- 👈 AQUÍ SE MOSTRARÁ LA ETIQUETA/BADGE CON EL COLOR Y TEXTO -->
                     <span class="event-type-badge ${eventType}">
                         ${getEventIcon(event.type)} ${typeLabel}
                     </span>
@@ -1173,171 +637,36 @@ function renderEvents() {
     });
 }
 
-// 2. Renderizar cada evento filtrado
-    filteredEvents.forEach(event => {
-        const card = document.createElement("div");
-
-        // 🔹 AQUÍ PONES LAS 2 LÍNEAS:
-        const eventType = event.type || "other";
-        card.className = `event-card ${eventType} type-${eventType}`;
-
-        const isPast = isPastEvent(event.event_date, event.event_time);
-        if (isPast) {
-            card.classList.add("event-past");
-        }
-
-        const eventParticipants = getEventParticipants(event.id);
-        const count = eventParticipants.length;
-        const joined = isJoined(event.id);
-        const isCreator = currentUser && event.user_id === currentUser.id;
-
-        let participantHTML = "";
-        eventParticipants.forEach(participant => {
-            participantHTML += `
-                <div class="participant">
-                    ✅ ${escapeHTML(participant.player_name || "Jugador")}
-                </div>
-            `;
-        });
-
-        if (eventParticipants.length === 0) {
-            participantHTML = `<div class="no-participants">Todavía nadie se ha apuntado.</div>`;
-        }
-
-        // Configuración de botones según el estado
-        let buttonHTML;
-        if (isPast) {
-            buttonHTML = `<button class="full-button" disabled style="opacity: 0.6;">🏁 Evento Finalizado</button>`;
-        } else if (joined) {
-            buttonHTML = `<button class="leave-button" onclick="leaveEvent(${event.id})">🔴 Retirarme</button>`;
-        } else if (count >= event.capacity) {
-            buttonHTML = `<button class="full-button" disabled>🚫 Completo</button>`;
-        } else {
-            buttonHTML = `<button class="join-button" onclick="joinEvent(${event.id})">🟢 Apuntarme</button>`;
-        }
-
-        let creatorButtonsHTML = "";
-        if (isCreator && !isPast) {
-            creatorButtonsHTML = `
-                <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                    <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                        ✏️ Editar
-                    </button>
-                    <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                        🗑️ Eliminar
-                    </button>
-                </div>
-            `;
-        }
-
-        card.innerHTML = `
-            <div class="event-card-header">
-                <div>
-                    <h3>
-                        ${getEventIcon(event.type)}
-                        ${escapeHTML(event.name)}
-                    </h3>
-                    <div class="event-info">
-                        📅 ${formatDate(new Date(`${event.event_date}T12:00:00`))} &nbsp;&nbsp;
-                        🕐 ${formatTime(event.event_time)}
-                    </div>
-                </div>
-                <div class="capacity">
-                    👥 ${count}/${event.capacity}
-                </div>
-            </div>
-
-            <div class="event-info">
-                ${escapeHTML(event.description || "")}
-            </div>
-
-            <div class="participants-box">
-                <strong>👥 Participantes</strong>
-                <div class="participants-list">
-                    ${participantHTML}
-                </div>
-            </div>
-
-            <div class="event-actions">
-                ${buttonHTML}
-                ${creatorButtonsHTML}
-            </div>
-        `;
-
-        eventsList.appendChild(card);
-    });
-}
 
 // ============================================
 // APUNTARSE A UN EVENTO
 // ============================================
 
 async function joinEvent(eventId) {
-
     if (!currentUser) {
-
-        alert(
-            "No estás conectado."
-        );
-
+        alert("No estás conectado.");
         return;
-
     }
 
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
 
-    const event =
-        events.find(
-            e =>
-                e.id === eventId
-        );
+    const currentParticipants = getEventParticipants(eventId);
 
-
-    if (!event) {
-
+    if (currentParticipants.length >= event.capacity) {
+        alert("Este evento está completo.");
         return;
-
     }
 
-
-    const currentParticipants =
-        getEventParticipants(
-            eventId
-        );
-
-
-    if (
-        currentParticipants.length >=
-        event.capacity
-    ) {
-
-        alert(
-            "Este evento está completo."
-        );
-
+    if (isJoined(eventId)) {
+        alert("Ya estás apuntado.");
         return;
-
     }
 
-
-    if (
-        isJoined(eventId)
-    ) {
-
-        alert(
-            "Ya estás apuntado."
-        );
-
-        return;
-
-    }
-
-
-    const playerName =
-        currentProfile?.player_name ||
+    const playerName = currentProfile?.player_name ||
         currentUser.user_metadata?.full_name ||
         currentUser.user_metadata?.username ||
         "Jugador";
-
 
     const { error } = await supabaseClient
         .from("event_participants")
@@ -1347,27 +676,13 @@ async function joinEvent(eventId) {
             player_name: playerName
         });
 
-
     if (error) {
-
-        console.error(
-            "Error apuntándose:",
-            error
-        );
-
-
-        alert(
-            "No se pudo apuntar. Revisa la consola."
-        );
-
-
+        console.error("Error apuntándose:", error);
+        alert("No se pudo apuntar. Revisa la consola.");
         return;
-
     }
 
-
     await loadEvents();
-
 }
 
 
@@ -1376,18 +691,15 @@ async function joinEvent(eventId) {
 // ============================================
 
 async function deleteEvent(eventId) {
-
     if (!confirm("¿Estás seguro de que deseas eliminar este evento?")) {
         return;
     }
 
-    // 1. Eliminar participantes asociados al evento
     await supabaseClient
         .from("event_participants")
         .delete()
         .eq("event_id", eventId);
 
-    // 2. Eliminar el evento
     const { error } = await supabaseClient
         .from("events")
         .delete()
@@ -1408,7 +720,6 @@ async function deleteEvent(eventId) {
 // ============================================
 
 function openEditModal(eventId) {
-
     const event = events.find(e => e.id === eventId);
     if (!event) return;
 
@@ -1433,50 +744,21 @@ function openEditModal(eventId) {
 // ============================================
 
 async function leaveEvent(eventId) {
+    if (!currentUser) return;
 
-    if (!currentUser) {
-
-        return;
-
-    }
-
-
-    const {
-        error
-    } =
-        await supabaseClient
-            .from("event_participants")
-            .delete()
-            .eq(
-                "event_id",
-                eventId
-            )
-            .eq(
-                "user_id",
-                currentUser.id
-            );
-
+    const { error } = await supabaseClient
+        .from("event_participants")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("user_id", currentUser.id);
 
     if (error) {
-
-        console.error(
-            "Error retirándose:",
-            error
-        );
-
-
-        alert(
-            "No se pudo retirar la inscripción."
-        );
-
-
+        console.error("Error retirándose:", error);
+        alert("No se pudo retirar la inscripción.");
         return;
-
     }
 
-
     await loadEvents();
-
 }
 
 
