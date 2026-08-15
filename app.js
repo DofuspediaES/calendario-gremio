@@ -1334,20 +1334,13 @@ async function joinEvent(eventId) {
     }
 
 
-    const {
-        error
-    } =
-        await supabaseClient
-            .from("event_participants")
-            .insert({
-
-                event_id:
-                    eventId,
-
-                user_id:
-                    currentUser.id
-
-            });
+const { error } = await supabaseClient
+    .from("event_participants")
+    .insert({
+        event_id: eventId,
+        user_id: currentUser.id,
+        player_name: currentUser.user_metadata?.full_name || currentUser.email || "Jugador"
+    });
 
 
     if (error) {
