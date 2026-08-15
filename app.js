@@ -7,13 +7,22 @@
 // SUPABASE
 // ============================================
 
-const SUPABASE_URL = "https://nmmetzityubqbrbpibee.supabase.co";
-const SUPABASE_KEY = "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+const SUPABASE_URL =
+    "https://nmmetzityubqbrbpibee.supabase.co";
 
-const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
+const SUPABASE_KEY =
+    "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+
+
+// ============================================
+// DISCORD
+// ============================================
+
+const DISCORD_CLIENT_ID =
+    "1538010946130419762";
+
+const DISCORD_REDIRECT_URI =
+    "https://dofuspediaes.github.io/calendario-gremio/";
 
 
 // ============================================
