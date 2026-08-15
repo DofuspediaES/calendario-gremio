@@ -666,3 +666,31 @@ textarea {
     background: #505050;
 
 }
+
+/* Estilos para las pestañas de filtrado */
+.filter-tab {
+    padding: 8px 16px;
+    border: 1px solid #333;
+    background: #1e1e1e;
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+    background: #2a2a2a;
+}
+
+.filter-tab.active {
+    background: #e74c3c; /* o el color principal de tu gremio */
+    color: #fff;
+    border-color: #e74c3c;
+    font-weight: bold;
+}
+
+/* Estilo para tarjetas en el histórico (eventos pasados) */
+.event-card.event-past {
+    opacity: 0.65;
+    filter: grayscale(20%);
+}
