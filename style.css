@@ -765,3 +765,39 @@ textarea {
     opacity: 0.65;
     filter: grayscale(20%);
 }
+
+/* =========================================
+   BORDES DE TARJETAS INFERIORES POR ACTIVIDAD
+========================================= */
+
+/* Forzado del borde izquierdo de las tarjetas según tipo */
+.event-card.dungeon, .event-card.type-dungeon { border-left: 6px solid #9b59b6 !important; }
+.event-card.quest, .event-card.type-quest { border-left: 6px solid #2ecc71 !important; }
+.event-card.infinite_dreams, .event-card.type-infinite_dreams { border-left: 6px solid #00d2d3 !important; }
+.event-card.commission, .event-card.type-commission { border-left: 6px solid #e67e22 !important; }
+.event-card.raid, .event-card.type-raid { border-left: 6px solid #e74c3c !important; }
+.event-card.farm, .event-card.type-farm { border-left: 6px solid #f1c40f !important; }
+.event-card.wanted, .event-card.type-wanted { border-left: 6px solid #d35400 !important; }
+.event-card.other, .event-card.type-other { border-left: 6px solid #7f8c8d !important; }
+
+/* Badge para mostrar el tipo de actividad arriba del título */
+.event-type-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: #333;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+.event-type-badge.dungeon { background: #9b59b6; }
+.event-type-badge.quest { background: #2ecc71; color: #111; }
+.event-type-badge.infinite_dreams { background: #00d2d3; color: #111; }
+.event-type-badge.commission { background: #e67e22; }
+.event-type-badge.raid { background: #e74c3c; }
+.event-type-badge.farm { background: #f1c40f; color: #111; }
+.event-type-badge.wanted { background: #d35400; }
+.event-type-badge.other { background: #7f8c8d; }
