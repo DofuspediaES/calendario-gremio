@@ -921,6 +921,10 @@ if (eventForm) {
             event.preventDefault();
 
 
+            // ========================================
+            // COMPROBAR USUARIO
+            // ========================================
+
             if (!currentUser) {
 
                 alert(
@@ -931,6 +935,10 @@ if (eventForm) {
 
             }
 
+
+            // ========================================
+            // OBTENER DATOS
+            // ========================================
 
             const name =
                 document.getElementById(
@@ -956,18 +964,6 @@ if (eventForm) {
                 ).value;
 
 
-            // 🔒 VALIDACIÓN DE FECHA Y HORA PASADA
-            const selectedDateTime = new Date(`${date}T${time}`);
-            const currentDateTime = new Date();
-
-            if (selectedDateTime < currentDateTime) {
-                alert(
-                    "⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado."
-                );
-                return;
-            }
-
-
             const capacity =
                 Number(
                     document.getElementById(
@@ -982,35 +978,140 @@ if (eventForm) {
                 ).value;
 
 
+            // ========================================
+            // VALIDAR FECHA Y HORA
+            // ========================================
+
+            const selectedDateTime =
+                new Date(`${date}T${time}`);
+
+
+            const currentDateTime =
+                new Date();
+
+
+            if (
+                selectedDateTime <
+                currentDateTime
+            ) {
+
+                alert(
+                    "⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado."
+                );
+
+                return;
+
+            }
+
+
+            // ========================================
+            // DATOS DEL EVENTO
+            // ========================================
+
             const eventData = {
-                user_id: currentUser.id,
-                name: name,
-                type: type,
-                event_date: date,
-                event_time: time,
-                timezone: getTimezone(),
-                capacity: capacity,
-                description: description
+
+                user_id:
+                    currentUser.id,
+
+                name:
+                    name,
+
+                type:
+                    type,
+
+                event_date:
+                    date,
+
+                event_time:
+                    time,
+
+                timezone:
+                    getTimezone(),
+
+                capacity:
+                    capacity,
+
+                description:
+                    description
+
             };
 
 
-            let error;
+            // ========================================
+            // VARIABLE DE RESULTADO
+            // ========================================
+
+            let savedEvent = null;
+
+            let error = null;
+
+
+            // ========================================
+            // CREAR / EDITAR
+            // ========================================
 
             if (editingEventId) {
+
+
+                // ====================================
                 // MODO EDICIÓN
-                const res = await supabaseClient
-                    .from("events")
-                    .update(eventData)
-                    .eq("id", editingEventId);
-                error = res.error;
+                // ====================================
+
+                const res =
+                    await supabaseClient
+
+                        .from("events")
+
+                        .update(eventData)
+
+                        .eq(
+                            "id",
+                            editingEventId
+                        )
+
+                        .select()
+
+                        .single();
+
+
+                savedEvent =
+                    res.data;
+
+                error =
+                    res.error;
+
+
             } else {
+
+
+                // ====================================
                 // MODO CREACIÓN
-                const res = await supabaseClient
-                    .from("events")
-                    .insert(eventData);
-                error = res.error;
+                // ====================================
+
+                const res =
+                    await supabaseClient
+
+                        .from("events")
+
+                        .insert(eventData)
+
+                        .select()
+
+                        .single();
+
+
+                savedEvent =
+                    res.data;
+
+                error =
+                    res.error;
+
             }
 
+
+            // ========================================
+            // ERROR SUPABASE
+            // ========================================
 
             if (error) {
 
@@ -1030,7 +1131,75 @@ if (eventForm) {
             }
 
 
-            editingEventId = null;
+            // ========================================
+            // ENVIAR A DISCORD
+            // SOLO CUANDO ES NUEVO
+            // ========================================
+
+            if (
+                !editingEventId &&
+                savedEvent
+            ) {
+
+                console.log(
+                    "Enviando nueva actividad a Discord..."
+                );
+
+
+                const {
+                    data: discordResult,
+                    error: discordError
+                } =
+                    await supabaseClient.functions.invoke(
+                        "discord-event",
+                        {
+                            body:
+                                savedEvent
+                        }
+                    );
+
+
+                // ====================================
+                // ERROR DISCORD
+                // ====================================
+
+                if (discordError) {
+
+                    console.error(
+                        "Error enviando actividad a Discord:",
+                        discordError
+                    );
+
+                    // IMPORTANTE:
+                    // La actividad YA se guardó
+                    // en Supabase.
+                    //
+                    // Discord falló solamente.
+
+                    console.warn(
+                        "La actividad se guardó correctamente, pero no pudo enviarse a Discord."
+                    );
+
+                } else {
+
+                    console.log(
+                        "Actividad enviada correctamente a Discord:",
+                        discordResult
+                    );
+
+                }
+
+            }
+
+
+            // ========================================
+            // LIMPIAR
+            // ========================================
+
+            editingEventId =
+                null;
+
+
             eventForm.reset();
 
 
@@ -1038,6 +1207,10 @@ if (eventForm) {
                 "hidden"
             );
 
+
+            // ========================================
+            // RECARGAR EVENTOS
+            // ========================================
 
             await loadEvents();
 
