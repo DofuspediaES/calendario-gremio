@@ -584,61 +584,38 @@ async function subscribeToPush() {
 
 
 async function enableNotifications() {
-
-    if (
-        !("Notification" in window)
-    ) {
-
-        alert(
-            "Tu navegador no permite notificaciones."
-        );
-
+    if (!("Notification" in window)) {
+        alert("Tu navegador no soporta notificaciones.");
         return;
-
     }
 
-
-    const permission =
-        await Notification.requestPermission();
-
-
-    if (
-        permission === "granted"
-    ) {
-
-        updateNotificationButton();
-
-
+    // 1. SI YA ESTÁ GRANTED (Ya estaban activadas)
+    if (Notification.permission === "granted") {
+        alert("✅ Las notificaciones ya están activadas en este navegador.");
+        
+        // Re-sincronizamos la suscripción por si acaso
         await subscribeToPush();
-
-
-        new Notification(
-            "🔔 Calendario del Gremio",
-            {
-
-                body:
-                    "Las notificaciones están activadas."
-
-            }
-        );
-
-
-        console.log(
-            "Notificaciones activadas."
-        );
-
-    } else {
-
-        updateNotificationButton();
-
-
-        console.log(
-            "Permiso de notificaciones:",
-            permission
-        );
-
+        return;
     }
 
+    // 2. SI ESTÁ DENIED (El usuario las bloqueó previamente)
+    if (Notification.permission === "denied") {
+        alert("🚫 Las notificaciones están bloqueadas en tu navegador.\n\nPara activarlas, debes hacer clic en el candado 🔒 al lado de la URL y permitir los permisos de Notificaciones.");
+        updateNotificationButton();
+        return;
+    }
+
+    // 3. SI AÚN NO HA DECIDIDO (Pide permiso por primera vez)
+    const permission = await Notification.requestPermission();
+
+    if (permission === "granted") {
+        updateNotificationButton();
+        await subscribeToPush();
+        alert("🔔 ¡Perfecto! Las notificaciones se han activado con éxito.");
+    } else {
+        updateNotificationButton();
+        alert("⚠️ No se pudieron activar las notificaciones porque se rechazó el permiso.");
+    }
 }
 
 
