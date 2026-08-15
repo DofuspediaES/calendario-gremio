@@ -134,7 +134,29 @@
 
             </div>
 
+<!-- CONTROLES DE FILTRADO Y PESTAÑAS -->
+<div class="filters-bar" style="margin: 20px 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+    
+    <!-- Pestañas Principales -->
+    <div class="tabs-group" style="display: flex; gap: 8px;">
+        <button class="filter-tab active" data-view="upcoming">📅 Próximos</button>
+        <button class="filter-tab" data-view="my_events">⭐ Mis Eventos</button>
+        <button class="filter-tab" data-view="past">📜 Histórico</button>
+    </div>
 
+    <!-- Filtro por Tipo / Categoria -->
+    <div class="category-select-wrapper">
+        <select id="categoryFilterSelect" style="padding: 8px 12px; border-radius: 6px; cursor: pointer;">
+            <option value="all">🎯 Todos los tipos</option>
+            <option value="raid">⚔️ Raids</option>
+            <option value="dungeon">🏰 Mazmorras</option>
+            <option value="quest">🎯 Misiones</option>
+            <option value="farm">💰 Farm</option>
+            <option value="other">⭐ Otros</option>
+        </select>
+    </div>
+</div>
+            
             <div id="eventsList">
 
                 <!-- JavaScript coloca los eventos aquí -->
