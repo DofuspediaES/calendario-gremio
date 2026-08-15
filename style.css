@@ -811,7 +811,7 @@ textarea {
 
 /* Tamaño y estilo para el escudo del gremio */
 .guild-shield {
-    height: 2.2em;        /* Se ajusta a la altura proporcional del título */
+    height: 100px;        /* Se ajusta a la altura proporcional del título */
     width: auto;          /* Mantiene la proporción original sin deformarse */
     object-fit: contain;
     vertical-align: middle;
