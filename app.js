@@ -825,6 +825,191 @@ function connectDiscord() {
 
 }
 
+// ============================================
+// PROCESAR REGRESO DE DISCORD
+// ============================================
+
+async function processDiscordCallback() {
+
+    const urlParams =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    const code =
+        urlParams.get("code");
+
+
+    if (!code) {
+
+        return;
+
+    }
+
+
+    console.log(
+        "Código de Discord recibido."
+    );
+
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.functions.invoke(
+                "discord-oauth",
+                {
+
+                    body: {
+
+                        code:
+                            code
+
+                    }
+
+                }
+            );
+
+
+        if (error) {
+
+            console.error(
+                "Error OAuth Discord:",
+                error
+            );
+
+
+            alert(
+                "No se pudo conectar Discord."
+            );
+
+
+            return;
+
+        }
+
+
+        if (
+            !data ||
+            !data.success
+        ) {
+
+            console.error(
+                data
+            );
+
+
+            alert(
+                "Discord no pudo ser conectado."
+            );
+
+
+            return;
+
+        }
+
+
+        console.log(
+            "Discord conectado:",
+            data.discord
+        );
+
+
+        // ====================================
+        // GUARDAR DISCORD EN PERFIL
+        // ====================================
+
+        const {
+            error:
+                profileError
+        } =
+            await supabaseClient
+                .from("profiles")
+                .update({
+
+                    discord_id:
+                        data.discord.id,
+
+                    discord_username:
+                        data.discord.global_name ||
+                        data.discord.username
+
+                })
+                .eq(
+                    "id",
+                    currentUser.id
+                );
+
+
+        if (profileError) {
+
+            console.error(
+                "Error guardando Discord:",
+                profileError
+            );
+
+
+            alert(
+                "Discord se conectó, pero no se pudo guardar en tu perfil."
+            );
+
+
+            return;
+
+        }
+
+
+        // ====================================
+        // ACTUALIZAR BOTÓN
+        // ====================================
+
+        if (discordButton) {
+
+            discordButton.textContent =
+                `🎮 ${data.discord.global_name || data.discord.username}`;
+
+            discordButton.classList.add(
+                "discord-connected"
+            );
+
+        }
+
+
+        // ====================================
+        // LIMPIAR URL
+        // ====================================
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+
+
+        alert(
+            "✅ Discord conectado correctamente."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error conectando Discord:",
+            error
+        );
+
+
+        alert(
+            "Ocurrió un error al conectar Discord."
+        );
+
+    }
+
+}
+
 
 // ============================================
 // CLICK EN BOTÓN
@@ -1340,8 +1525,6 @@ async function startApp() {
 
     showTimezone();
 
-    updateNotificationButton();
-
 
     const connected =
         await loginAnonymous();
@@ -1355,6 +1538,18 @@ async function startApp() {
 
 
     await loadProfile();
+
+
+    // ========================================
+    // PROCESAR DISCORD
+    // ========================================
+
+    await processDiscordCallback();
+
+
+    // ========================================
+    // CARGAR EVENTOS
+    // ========================================
 
     await loadEvents();
 
