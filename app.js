@@ -782,6 +782,59 @@ if (changeNameButton) {
         changePlayerName
     );
 
+    const discordButton =
+    document.getElementById(
+        "discordButton"
+    );
+
+    // ============================================
+// DISCORD OAUTH
+// ============================================
+
+function connectDiscord() {
+
+    const params =
+        new URLSearchParams({
+
+            client_id:
+                DISCORD_CLIENT_ID,
+
+            redirect_uri:
+                DISCORD_REDIRECT_URI,
+
+            response_type:
+                "code",
+
+            scope:
+                "identify"
+
+        });
+
+
+    const discordURL =
+        "https://discord.com/oauth2/authorize?" +
+        params.toString();
+
+
+    window.location.href =
+        discordURL;
+
+}
+
+
+// ============================================
+// BOTÓN DISCORD
+// ============================================
+
+if (discordButton) {
+
+    discordButton.addEventListener(
+        "click",
+        connectDiscord
+    );
+
+}
+
 }
 
 
@@ -929,6 +982,262 @@ if (eventForm) {
 
             event.preventDefault();
 
+// ============================================
+// PROCESAR REGRESO DE DISCORD
+// ============================================
+
+async function processDiscordCallback() {
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    const code =
+        params.get("code");
+
+
+    if (!code) {
+
+        return;
+
+    }
+
+
+    if (!currentUser) {
+
+        console.error(
+            "No hay usuario de Supabase."
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "Código de Discord encontrado."
+    );
+
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabaseClient.functions.invoke(
+                "discord-oauth",
+                {
+
+                    body: {
+
+                        code:
+                            code
+
+                    }
+
+                }
+            );
+
+
+        if (error) {
+
+            console.error(
+                "Error OAuth:",
+                error
+            );
+
+            alert(
+                "No se pudo conectar Discord."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            !data ||
+            !data.discord_user
+        ) {
+
+            console.error(
+                "Respuesta incorrecta:",
+                data
+            );
+
+            alert(
+                "Discord no devolvió los datos correctamente."
+            );
+
+            return;
+
+        }
+
+
+        const discordUser =
+            data.discord_user;
+
+
+        // -------------------------------
+        // GUARDAR EN SUPABASE
+        // -------------------------------
+
+        const {
+            error: saveError
+        } =
+            await supabaseClient
+                .from("discord_accounts")
+                .upsert(
+
+                    {
+
+                        user_id:
+                            currentUser.id,
+
+                        discord_user_id:
+                            discordUser.id,
+
+                        discord_username:
+                            discordUser.username,
+
+                        discord_global_name:
+                            discordUser.global_name,
+
+                        avatar:
+                            discordUser.avatar,
+
+                        updated_at:
+                            new Date()
+                                .toISOString()
+
+                    },
+
+                    {
+
+                        onConflict:
+                            "user_id"
+
+                    }
+
+                );
+
+
+        if (saveError) {
+
+            console.error(
+                "Error guardando Discord:",
+                saveError
+            );
+
+            alert(
+                "Discord fue conectado, pero no se pudo guardar la cuenta."
+            );
+
+            return;
+
+        }
+
+
+        alert(
+            `🎮 Discord conectado correctamente.\n\n${discordUser.global_name || discordUser.username}`
+        );
+
+
+        // -------------------------------
+        // LIMPIAR ?code=
+        // -------------------------------
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+
+
+        updateDiscordButton();
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            "Ocurrió un error conectando Discord."
+        );
+
+    }
+
+}
+
+// ============================================
+// ESTADO DISCORD
+// ============================================
+
+async function updateDiscordButton() {
+
+    if (
+        !discordButton ||
+        !currentUser
+    ) {
+
+        return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("discord_accounts")
+            .select("*")
+            .eq(
+                "user_id",
+                currentUser.id
+            )
+            .maybeSingle();
+
+
+    if (error) {
+
+        console.error(
+            "Error comprobando Discord:",
+            error
+        );
+
+        return;
+
+    }
+
+
+    if (data) {
+
+        discordButton.textContent =
+            `🎮 ${data.discord_global_name || data.discord_username}`;
+
+        discordButton.classList.add(
+            "discord-connected"
+        );
+
+    } else {
+
+        discordButton.textContent =
+            "🎮 Conectar Discord";
+
+        discordButton.classList.remove(
+            "discord-connected"
+        );
+
+    }
+
+}
+
+            
 
             // ========================================
             // COMPROBAR USUARIO
@@ -1285,8 +1594,6 @@ async function startApp() {
 
     showTimezone();
 
-    updateNotificationButton();
-
 
     const connected =
         await loginAnonymous();
@@ -1299,11 +1606,29 @@ async function startApp() {
     }
 
 
+    // Cargar perfil
+
     await loadProfile();
+
+
+    // Comprobar Discord
+
+    await updateDiscordButton();
+
+
+    // Cargar eventos
 
     await loadEvents();
 
+
+    // Comprobar si volvimos de Discord
+
+    await processDiscordCallback();
+
 }
+
+
+startApp();
 
 
 startApp();
