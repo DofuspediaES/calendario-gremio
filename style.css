@@ -801,3 +801,18 @@ textarea {
 .event-type-badge.farm { background: #f1c40f; color: #111; }
 .event-type-badge.wanted { background: #d35400; }
 .event-type-badge.other { background: #7f8c8d; }
+
+/* Contenedor que agrupa el escudo y el texto alineados */
+.header-title-container {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Espacio entre el escudo y el texto */
+}
+
+/* Tamaño y estilo para el escudo del gremio */
+.guild-shield {
+    width: 50px;          /* Ajusta según el tamaño deseado */
+    height: 50px;
+    object-fit: contain;  /* Mantiene la proporción de la imagen */
+    filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.3)); /* Sombra ligera opcional */
+}
