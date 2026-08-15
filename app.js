@@ -755,25 +755,23 @@ function formatTime(time) {
 }
 
 
+// ============================================
+// EMOJIS / ÍCONOS DE ACTIVIDAD
+// ============================================
+
 function getEventIcon(type) {
-
     const icons = {
-
+        dungeon: "🗝️",
+        quest: "🗺️",
+        infinite_dreams: "🌀",
+        commission: "📦",
         raid: "⚔️",
-
-        dungeon: "🏰",
-
-        quest: "🎯",
-
         farm: "💰",
-
-        other: "⭐"
-
+        wanted: "📜",
+        other: "🎲"
     };
 
-
-    return icons[type] || "⭐";
-
+    return icons[type] || "🎲";
 }
 
 
