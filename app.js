@@ -1299,64 +1299,63 @@ if (eventForm) {
             // CREAR / EDITAR
             // ========================================
 
-            if (editingEventId) {
+           let error;
+
+let savedEvent = null;
 
 
-                // ====================================
-                // MODO EDICIÓN
-                // ====================================
+// ============================================
+// EDITAR EVENTO
+// ============================================
 
-                const res =
-                    await supabaseClient
+if (editingEventId) {
 
-                        .from("events")
-
-                        .update(eventData)
-
-                        .eq(
-                            "id",
-                            editingEventId
-                        )
-
-                        .select()
-
-                        .single();
+    const res =
+        await supabaseClient
+            .from("events")
+            .update(eventData)
+            .eq(
+                "id",
+                editingEventId
+            )
+            .select()
+            .single();
 
 
-                savedEvent =
-                    res.data;
-
-                error =
-                    res.error;
+    error =
+        res.error;
 
 
-            } else {
+    savedEvent =
+        res.data;
+
+}
 
 
-                // ====================================
-                // MODO CREACIÓN
-                // ====================================
+// ============================================
+// CREAR EVENTO
+// ============================================
 
-                const res =
-                    await supabaseClient
+else {
 
-                        .from("events")
+    const res =
+        await supabaseClient
+            .from("events")
+            .insert(
+                eventData
+            )
+            .select()
+            .single();
 
-                        .insert(eventData)
 
-                        .select()
-
-                        .single();
+    error =
+        res.error;
 
 
-                savedEvent =
-                    res.data;
+    savedEvent =
+        res.data;
 
-                error =
-                    res.error;
-
-            }
-
+}
 
             // ========================================
             // ERROR SUPABASE
@@ -1378,6 +1377,92 @@ if (eventForm) {
                 return;
 
             }
+
+            // ============================================
+// PUBLICAR EN DISCORD
+// ============================================
+
+if (
+    savedEvent &&
+    !editingEventId
+) {
+
+    try {
+
+        const {
+            data:
+                discordData,
+            error:
+                discordError
+        } =
+            await supabaseClient
+                .functions
+                .invoke(
+                    "discord-event",
+                    {
+
+                        body:
+                            savedEvent
+
+                    }
+                );
+
+
+        if (discordError) {
+
+            console.error(
+                "Error enviando a Discord:",
+                discordError
+            );
+
+            alert(
+                "⚠️ La actividad se creó, pero no pudo publicarse en Discord."
+            );
+
+        }
+
+        else if (
+            discordData &&
+            discordData.success
+        ) {
+
+            // ==================================
+            // GUARDAR ID DEL MENSAJE DISCORD
+            // ==================================
+
+            await supabaseClient
+                .from("events")
+                .update({
+
+                    discord_message_id:
+                        discordData.message_id,
+
+                    discord_channel_id:
+                        discordData.channel_id
+
+                })
+                .eq(
+                    "id",
+                    savedEvent.id
+                );
+
+
+            console.log(
+                "✅ Actividad publicada en Discord."
+            );
+
+        }
+
+    } catch (discordError) {
+
+        console.error(
+            "Error Discord:",
+            discordError
+        );
+
+    }
+
+}
 
 
             // ========================================
