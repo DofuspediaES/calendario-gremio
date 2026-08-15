@@ -835,8 +835,6 @@ if (discordButton) {
 
 }
 
-}
-
 
 if (notificationButton) {
 
