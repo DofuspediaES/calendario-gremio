@@ -1024,6 +1024,19 @@ function renderCalendar() {
 // MOSTRAR TARJETAS DE EVENTOS (CON FILTROS)
 // ============================================
 
+// 1. Diccionario con los nombres de las actividades (colócalo arriba de renderEvents)
+const EVENT_TYPE_NAMES = {
+    dungeon: "Mazmorra",
+    quest: "Misión",
+    infinite_dreams: "Sueños Infinitos",
+    commission: "Encargo",
+    raid: "Raid / Cacería",
+    farm: "Farm / Leveo",
+    wanted: "Buscado",
+    other: "Otro"
+};
+
+// 2. Función completa para reemplazar la tuya:
 function renderEvents() {
     if (!eventsList) return;
     eventsList.innerHTML = "";
@@ -1062,11 +1075,115 @@ function renderEvents() {
     // 2. Renderizar cada evento filtrado
     filteredEvents.forEach(event => {
         const card = document.createElement("div");
-        card.className = "event-card";
+
+        /* 👈 AQUÍ VA EL PRIMER CÓDIGO (Asigna clase del tipo para pintar el borde) */
+        const eventType = event.type || "other";
+        card.className = `event-card ${eventType} type-${eventType}`;
 
         const isPast = isPastEvent(event.event_date, event.event_time);
         if (isPast) {
-            card.classList.add("event-past"); // Para aplicar opacidad o estilos de evento finalizado
+            card.classList.add("event-past");
+        }
+
+        const eventParticipants = getEventParticipants(event.id);
+        const count = eventParticipants.length;
+        const joined = isJoined(event.id);
+        const isCreator = currentUser && event.user_id === currentUser.id;
+
+        let participantHTML = "";
+        eventParticipants.forEach(participant => {
+            participantHTML += `
+                <div class="participant">
+                    ✅ ${escapeHTML(participant.player_name || "Jugador")}
+                </div>
+            `;
+        });
+
+        if (eventParticipants.length === 0) {
+            participantHTML = `<div class="no-participants">Todavía nadie se ha apuntado.</div>`;
+        }
+
+        // Configuración de botones según el estado
+        let buttonHTML;
+        if (isPast) {
+            buttonHTML = `<button class="full-button" disabled style="opacity: 0.6;">🏁 Evento Finalizado</button>`;
+        } else if (joined) {
+            buttonHTML = `<button class="leave-button" onclick="leaveEvent(${event.id})">🔴 Retirarme</button>`;
+        } else if (count >= event.capacity) {
+            buttonHTML = `<button class="full-button" disabled>🚫 Completo</button>`;
+        } else {
+            buttonHTML = `<button class="join-button" onclick="joinEvent(${event.id})">🟢 Apuntarme</button>`;
+        }
+
+        let creatorButtonsHTML = "";
+        if (isCreator && !isPast) {
+            creatorButtonsHTML = `
+                <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
+                    <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        ✏️ Editar
+                    </button>
+                    <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            `;
+        }
+
+        /* 👈 AQUÍ OBTENEMOS EL NOMBRE DE LA ACTIVIDAD */
+        const typeLabel = EVENT_TYPE_NAMES[eventType] || eventType;
+
+        card.innerHTML = `
+            <div class="event-card-header">
+                <div>
+                    <!-- 👈 AQUÍ SE MOSTRARÁ LA ETIQUETA/BADGE CON EL COLOR Y TEXTO -->
+                    <span class="event-type-badge ${eventType}">
+                        ${getEventIcon(event.type)} ${typeLabel}
+                    </span>
+                    <h3>
+                        ${escapeHTML(event.name)}
+                    </h3>
+                    <div class="event-info">
+                        📅 ${formatDate(new Date(`${event.event_date}T12:00:00`))} &nbsp;&nbsp;
+                        🕐 ${formatTime(event.event_time)}
+                    </div>
+                </div>
+                <div class="capacity">
+                    👥 ${count}/${event.capacity}
+                </div>
+            </div>
+
+            <div class="event-info">
+                ${escapeHTML(event.description || "")}
+            </div>
+
+            <div class="participants-box">
+                <strong>👥 Participantes</strong>
+                <div class="participants-list">
+                    ${participantHTML}
+                </div>
+            </div>
+
+            <div class="event-actions">
+                ${buttonHTML}
+                ${creatorButtonsHTML}
+            </div>
+        `;
+
+        eventsList.appendChild(card);
+    });
+}
+
+// 2. Renderizar cada evento filtrado
+    filteredEvents.forEach(event => {
+        const card = document.createElement("div");
+
+        // 🔹 AQUÍ PONES LAS 2 LÍNEAS:
+        const eventType = event.type || "other";
+        card.className = `event-card ${eventType} type-${eventType}`;
+
+        const isPast = isPastEvent(event.event_date, event.event_time);
+        if (isPast) {
+            card.classList.add("event-past");
         }
 
         const eventParticipants = getEventParticipants(event.id);
