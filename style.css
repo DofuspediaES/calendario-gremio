@@ -1,12 +1,65 @@
+/* =========================================================
+   WABBITAPP — DISEÑO DEL GREMIO
+   Gris oscuro + Naranja zanahoria
+========================================================= */
+
+:root {
+    --bg-main: #151515;
+    --bg-secondary: #1d1d1d;
+    --bg-card: #222222;
+    --bg-card-hover: #292929;
+    --bg-input: #171717;
+
+    --border: #383838;
+    --border-light: #444444;
+
+    --orange: #f28c28;
+    --orange-light: #ff9f3d;
+    --orange-dark: #c96b12;
+
+    --text: #eeeeee;
+    --text-secondary: #a5a5a5;
+    --text-muted: #707070;
+
+    --green: #3fa45b;
+    --red: #b94b4b;
+
+    --radius: 10px;
+    --radius-small: 6px;
+}
+
+
+/* =========================================================
+   GENERAL
+========================================================= */
+
 * {
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
-    background: #171717;
-    color: #eeeeee;
-    font-family: Arial, Helvetica, sans-serif;
+
+    background:
+        radial-gradient(
+            circle at top,
+            #242424 0%,
+            #151515 45%,
+            #111111 100%
+        );
+
+    color: var(--text);
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    min-height: 100vh;
 }
 
 button,
@@ -16,61 +69,152 @@ textarea {
     font-family: inherit;
 }
 
+button {
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease,
+        opacity 0.2s ease;
+}
+
+button:not(:disabled):active {
+    transform: scale(0.97);
+}
+
 .app {
-    width: 95%;
+    width: 94%;
     max-width: 1200px;
-    margin: 30px auto;
+
+    margin: 25px auto 50px;
 }
 
 
-/* =========================
+/* =========================================================
    ENCABEZADO
-========================= */
+========================================================= */
 
 .header {
+    position: relative;
+
     display: flex;
+
     justify-content: space-between;
     align-items: center;
 
-    background: #242424;
+    background:
+        linear-gradient(
+            135deg,
+            #272727,
+            #202020
+        );
 
-    border: 1px solid #444;
-    border-radius: 10px;
+    border: 1px solid var(--border-light);
 
-    padding: 20px 24px;
+    border-radius: var(--radius);
 
-    margin-bottom: 20px;
+    padding: 18px 22px;
+
+    margin-bottom: 18px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* Línea naranja decorativa */
+
+.header::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 4px;
+
+    background: var(--orange);
+}
+
+.header-title-container {
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+}
+
+.guild-shield {
+    width: 78px;
+    height: 78px;
+
+    object-fit: contain;
+
+    border-radius: 8px;
+
+    filter:
+        drop-shadow(
+            0 3px 5px rgba(0, 0, 0, 0.5)
+        );
 }
 
 .header h1 {
-    margin: 0 0 6px 0;
+    margin: 0 0 5px;
 
-    font-size: 26px;
+    font-size: 25px;
+
+    font-weight: 700;
+
+    letter-spacing: -0.3px;
 }
 
 .header p {
     margin: 0;
 
-    color: #999;
+    color: var(--text-secondary);
+
+    font-size: 13px;
 }
 
-.today-button {
-    background: #4738ff;
 
-    color: white;
+/* =========================================================
+   BOTÓN HOY
+========================================================= */
+
+.today-button {
+    background: var(--orange);
+
+    color: #171717;
 
     border: 0;
-    border-radius: 6px;
+
+    border-radius: var(--radius-small);
 
     padding: 10px 18px;
 
+    font-size: 13px;
+
+    font-weight: bold;
+
     cursor: pointer;
+
+    box-shadow:
+        0 3px 10px rgba(242, 140, 40, 0.2);
+}
+
+.today-button:hover {
+    background: var(--orange-light);
+
+    box-shadow:
+        0 4px 14px rgba(242, 140, 40, 0.35);
 }
 
 
-/* =========================
-   NAVEGACIÓN
-========================= */
+/* =========================================================
+   NAVEGACIÓN DEL MES
+========================================================= */
 
 .calendar-navigation {
     display: flex;
@@ -78,39 +222,46 @@ textarea {
     justify-content: space-between;
     align-items: center;
 
-    margin-bottom: 10px;
+    margin: 22px 0 10px;
 }
 
 .calendar-navigation h2 {
     margin: 0;
 
     text-transform: capitalize;
+
+    font-size: 20px;
 }
 
 .nav-button {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
 
-    border: 1px solid #444;
-    border-radius: 6px;
+    border: 1px solid var(--border);
 
-    background: #242424;
-    color: white;
+    border-radius: var(--radius-small);
+
+    background: var(--bg-card);
+
+    color: var(--text);
 
     font-size: 25px;
 
     cursor: pointer;
 }
 
-.nav-button:hover,
-.today-button:hover {
-    filter: brightness(1.2);
+.nav-button:hover {
+    background: var(--orange);
+
+    color: #171717;
+
+    border-color: var(--orange);
 }
 
 
-/* =========================
+/* =========================================================
    DÍAS DE LA SEMANA
-========================= */
+========================================================= */
 
 .weekdays {
     display: grid;
@@ -118,28 +269,40 @@ textarea {
     grid-template-columns:
         repeat(7, 1fr);
 
-    background: #242424;
+    background: #252525;
 
-    border: 1px solid #444;
+    border:
+        1px solid var(--border);
 
     border-bottom: 0;
+
+    border-radius:
+        var(--radius)
+        var(--radius)
+        0
+        0;
+
+    overflow: hidden;
 }
 
 .weekdays div {
     text-align: center;
 
-    padding: 10px 5px;
+    padding: 11px 5px;
 
-    color: #999;
+    color: var(--text-muted);
 
-    font-size: 12px;
+    font-size: 11px;
+
     font-weight: bold;
+
+    letter-spacing: 0.5px;
 }
 
 
-/* =========================
+/* =========================================================
    CALENDARIO
-========================= */
+========================================================= */
 
 .calendar {
     display: grid;
@@ -147,20 +310,38 @@ textarea {
     grid-template-columns:
         repeat(7, 1fr);
 
-    border-left: 1px solid #444;
+    border-left:
+        1px solid var(--border);
+
+    overflow: hidden;
+
+    border-radius:
+        0
+        0
+        var(--radius)
+        var(--radius);
+
+    box-shadow:
+        0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .day {
-    min-height: 105px;
+    min-height: 108px;
 
     background: #202020;
 
-    border-right: 1px solid #444;
-    border-bottom: 1px solid #444;
+    border-right:
+        1px solid var(--border);
+
+    border-bottom:
+        1px solid var(--border);
 
     padding: 8px;
 
     cursor: pointer;
+
+    transition:
+        background 0.15s ease;
 }
 
 .day:hover {
@@ -176,116 +357,136 @@ textarea {
 .day-number {
     display: inline-flex;
 
-    width: 28px;
-    height: 28px;
+    width: 29px;
+    height: 29px;
 
     align-items: center;
     justify-content: center;
 
     border-radius: 50%;
 
-    font-size: 13px;
+    font-size: 12px;
+
+    color: #cfcfcf;
 }
 
 .day.today .day-number {
-    background: #4738ff;
+    background: var(--orange);
 
-    color: white;
+    color: #171717;
+
+    font-weight: bold;
+
+    box-shadow:
+        0 0 0 3px rgba(242, 140, 40, 0.12);
 }
 
 
-/* =========================
-   EVENTOS DENTRO DEL DÍA (CUADRÍCULA)
-========================= */
+/* =========================================================
+   EVENTOS DENTRO DEL CALENDARIO
+========================================================= */
 
 .calendar-event {
     margin-top: 5px;
 
-    padding: 5px;
+    padding: 5px 6px;
 
-    border-radius: 4px;
+    border-radius: 5px;
 
-    background: #303030;
+    background: #2b2b2b;
 
-    border-left: 3px solid #7f8c8d; /* Por defecto */
+    border-left:
+        3px solid #777;
 
     font-size: 11px;
 
     overflow: hidden;
 
-    transition: border-color 0.2s ease;
+    transition:
+        background 0.2s ease,
+        transform 0.15s ease;
+}
+
+.calendar-event:hover {
+    background: #333;
+
+    transform: translateX(1px);
 }
 
 .calendar-event.dungeon,
 .calendar-event.type-dungeon {
-    border-left-color: #9b59b6; /* 🗝️ Púrpura */
+    border-left-color: #9b59b6;
 }
 
 .calendar-event.quest,
 .calendar-event.type-quest {
-    border-left-color: #2ecc71; /* 🗺️ Verde */
+    border-left-color: #2ecc71;
 }
 
 .calendar-event.infinite_dreams,
 .calendar-event.type-infinite_dreams {
-    border-left-color: #00d2d3; /* 🌀 Turquesa */
+    border-left-color: #00d2d3;
 }
 
 .calendar-event.commission,
 .calendar-event.type-commission {
-    border-left-color: #e67e22; /* 📦 Naranja */
+    border-left-color: #e67e22;
 }
 
 .calendar-event.raid,
 .calendar-event.type-raid {
-    border-left-color: #e74c3c; /* ⚔️ Rojo */
+    border-left-color: #e74c3c;
 }
 
 .calendar-event.farm,
 .calendar-event.type-farm {
-    border-left-color: #f1c40f; /* 💰 Amarillo / Dorado */
+    border-left-color: #f1c40f;
 }
 
 .calendar-event.wanted,
 .calendar-event.type-wanted {
-    border-left-color: #d35400; /* 📜 Marrón / Terracota */
+    border-left-color: #d35400;
 }
 
 .calendar-event.other,
 .calendar-event.type-other {
-    border-left-color: #7f8c8d; /* 🎲 Gris */
+    border-left-color: #7f8c8d;
 }
 
 .event-time {
-    color: #aaa;
+    color: #999;
 
     margin-right: 4px;
 }
 
 
-/* =========================
+/* =========================================================
    ZONA HORARIA
-========================= */
+========================================================= */
 
 .timezone {
-    margin-top: 12px;
+    margin-top: 10px;
 
-    padding: 10px;
+    padding: 9px;
 
     text-align: center;
 
-    color: #999;
+    color: var(--text-muted);
 
-    font-size: 13px;
+    font-size: 12px;
+}
+
+.timezone strong {
+    color: var(--text-secondary);
 }
 
 
-/* =========================
-   LISTA DE EVENTOS Y BARRITAS DE COLOR
-========================= */
+/* =========================================================
+   SECCIÓN DE ACTIVIDADES
+========================================================= */
 
 .events-section {
-    margin-top: 30px;
+    margin-top: 32px;
 }
 
 .section-title {
@@ -294,129 +495,510 @@ textarea {
     justify-content: space-between;
     align-items: center;
 
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .section-title h2 {
     margin: 0;
+
+    font-size: 20px;
 }
 
 .add-button {
-    background: #4738ff;
+    background: var(--orange);
 
     border: 0;
-    border-radius: 6px;
 
-    color: white;
+    border-radius: var(--radius-small);
+
+    color: #171717;
 
     padding: 10px 15px;
 
     cursor: pointer;
+
+    font-weight: bold;
 }
+
+.add-button:hover {
+    background: var(--orange-light);
+}
+
+
+/* =========================================================
+   FILTROS
+========================================================= */
+
+.filters-bar {
+    background: #1c1c1c;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    padding: 10px !important;
+
+    margin: 0 0 16px !important;
+}
+
+.tabs-group {
+    display: flex;
+
+    gap: 5px !important;
+}
+
+.filter-tab {
+    padding: 8px 13px;
+
+    border:
+        1px solid transparent;
+
+    background: transparent;
+
+    color: #999;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+}
+
+.filter-tab:hover {
+    background: #292929;
+
+    color: #ddd;
+}
+
+.filter-tab.active {
+    background: var(--orange);
+
+    color: #171717;
+
+    border-color: var(--orange);
+
+    font-weight: bold;
+
+    box-shadow:
+        0 2px 8px rgba(242, 140, 40, 0.2);
+}
+
+#categoryFilterSelect {
+    background: #242424 !important;
+
+    color: #ddd;
+
+    border:
+        1px solid var(--border) !important;
+
+    outline: none;
+}
+
+#categoryFilterSelect:focus {
+    border-color: var(--orange) !important;
+}
+
+
+/* =========================================================
+   TARJETAS DE ACTIVIDADES
+========================================================= */
 
 .event-card {
-    background: #242424;
+    position: relative;
 
-    border: 1px solid #444;
+    background:
+        linear-gradient(
+            135deg,
+            #242424,
+            #202020
+        );
 
-    border-left: 6px solid #7f8c8d; /* Color por defecto */
+    border:
+        1px solid var(--border);
 
-    border-radius: 8px;
+    border-left:
+        5px solid #777;
 
-    padding: 15px;
+    border-radius: var(--radius);
 
-    margin-bottom: 10px;
+    padding: 17px 18px;
 
-    transition: border-color 0.3s ease;
+    margin-bottom: 12px;
+
+    transition:
+        transform 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
-/* Colores para las tarjetas según el tipo */
+.event-card:hover {
+    background: #282828;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Colores por actividad */
+
 .event-card.type-dungeon,
 .event-card.dungeon {
-    border-left-color: #9b59b6; /* 🗝️ Púrpura */
+    border-left-color: #9b59b6 !important;
 }
 
 .event-card.type-quest,
 .event-card.quest {
-    border-left-color: #2ecc71; /* 🗺️ Verde */
+    border-left-color: #2ecc71 !important;
 }
 
 .event-card.type-infinite_dreams,
 .event-card.infinite_dreams {
-    border-left-color: #00d2d3; /* 🌀 Turquesa */
+    border-left-color: #00d2d3 !important;
 }
 
 .event-card.type-commission,
 .event-card.commission {
-    border-left-color: #e67e22; /* 📦 Naranja */
+    border-left-color: #e67e22 !important;
 }
 
 .event-card.type-raid,
 .event-card.raid {
-    border-left-color: #e74c3c; /* ⚔️ Rojo */
+    border-left-color: #e74c3c !important;
 }
 
 .event-card.type-farm,
 .event-card.farm {
-    border-left-color: #f1c40f; /* 💰 Amarillo / Dorado */
+    border-left-color: #f1c40f !important;
 }
 
 .event-card.type-wanted,
 .event-card.wanted {
-    border-left-color: #d35400; /* 📜 Marrón / Terracota */
+    border-left-color: #d35400 !important;
 }
 
 .event-card.type-other,
 .event-card.other {
-    border-left-color: #7f8c8d; /* 🎲 Gris */
+    border-left-color: #7f8c8d !important;
 }
+
+
+/* =========================================================
+   CABECERA DE TARJETA
+========================================================= */
 
 .event-card-header {
     display: flex;
 
     justify-content: space-between;
 
-    gap: 10px;
+    gap: 15px;
 }
 
 .event-card h3 {
-    margin: 0 0 5px 0;
+    margin: 0 0 6px;
+
+    font-size: 17px;
+
+    color: #f1f1f1;
 }
 
 .event-info {
-    color: #aaa;
+    color: #999;
 
     font-size: 13px;
 
-    margin-top: 5px;
+    margin-top: 6px;
 }
 
 .capacity {
     white-space: nowrap;
 
     color: #aaa;
+
+    font-size: 13px;
 }
 
 
-/* =========================
+/* =========================================================
+   BADGE DE TIPO
+========================================================= */
+
+.event-type-badge {
+    display: inline-block;
+
+    padding: 4px 9px;
+
+    border-radius: 5px;
+
+    font-size: 10px;
+
+    font-weight: bold;
+
+    text-transform: uppercase;
+
+    background: #333;
+
+    color: #fff;
+
+    margin-bottom: 7px;
+
+    letter-spacing: 0.4px;
+}
+
+.event-type-badge.dungeon {
+    background: #9b59b6;
+}
+
+.event-type-badge.quest {
+    background: #2ecc71;
+
+    color: #111;
+}
+
+.event-type-badge.infinite_dreams {
+    background: #00d2d3;
+
+    color: #111;
+}
+
+.event-type-badge.commission {
+    background: #e67e22;
+}
+
+.event-type-badge.raid {
+    background: #e74c3c;
+}
+
+.event-type-badge.farm {
+    background: #f1c40f;
+
+    color: #111;
+}
+
+.event-type-badge.wanted {
+    background: #d35400;
+}
+
+.event-type-badge.other {
+    background: #7f8c8d;
+}
+
+
+/* =========================================================
+   PARTICIPANTES
+========================================================= */
+
+.participants-box {
+    margin-top: 15px;
+
+    padding-top: 12px;
+
+    border-top:
+        1px solid #363636;
+}
+
+.participants-list {
+    margin-top: 8px;
+}
+
+.participant {
+    display: inline-block;
+
+    background: #303030;
+
+    border:
+        1px solid #3d3d3d;
+
+    border-radius: 5px;
+
+    padding: 6px 9px;
+
+    margin: 3px;
+
+    font-size: 12px;
+
+    color: #ddd;
+}
+
+.no-participants {
+    margin-top: 8px;
+
+    color: #666;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   BOTONES DE PARTICIPACIÓN
+========================================================= */
+
+.event-actions {
+    margin-top: 15px;
+
+    display: flex;
+
+    gap: 8px;
+}
+
+.join-button,
+.leave-button,
+.full-button {
+    border: 0;
+
+    border-radius: var(--radius-small);
+
+    padding: 9px 14px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+
+    font-size: 12px;
+}
+
+.join-button {
+    background: #286b3c;
+
+    color: white;
+}
+
+.join-button:hover {
+    background: #347f4a;
+}
+
+.leave-button {
+    background: #6b3030;
+
+    color: white;
+}
+
+.leave-button:hover {
+    background: #813939;
+}
+
+.full-button {
+    background: #353535;
+
+    color: #777;
+
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   PERFIL
+========================================================= */
+
+.player-profile {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin: 15px 0;
+
+    padding: 12px 15px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #242424,
+            #202020
+        );
+
+    border:
+        1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.player-info {
+    display: flex;
+
+    align-items: center;
+}
+
+#playerNameDisplay {
+    font-weight: bold;
+
+    color: #eee;
+
+    font-size: 14px;
+}
+
+.player-actions {
+    display: flex;
+
+    gap: 6px;
+
+    flex-wrap: wrap;
+
+    justify-content: flex-end;
+}
+
+#changeNameButton,
+.profile-button,
+.discord-button,
+.notification-button {
+    border:
+        1px solid #3d3d3d;
+
+    border-radius: 5px;
+
+    padding: 7px 10px;
+
+    background: #303030;
+
+    color: #ddd;
+
+    cursor: pointer;
+
+    font-size: 12px;
+}
+
+#changeNameButton:hover,
+.profile-button:hover,
+.discord-button:hover,
+.notification-button:hover {
+    background: #3a3a3a;
+
+    border-color: #555;
+}
+
+
+/* =========================================================
    MODAL
-========================= */
+========================================================= */
 
 .modal {
     position: fixed;
 
     inset: 0;
 
-    background: rgba(0, 0, 0, 0.75);
+    background:
+        rgba(0, 0, 0, 0.78);
 
     display: flex;
 
     justify-content: center;
+
     align-items: center;
 
     padding: 20px;
 
     z-index: 100;
+
+    backdrop-filter: blur(3px);
 }
 
 .hidden {
@@ -427,44 +1009,70 @@ textarea {
     position: relative;
 
     width: 100%;
+
     max-width: 500px;
 
-    background: #242424;
+    background:
+        linear-gradient(
+            135deg,
+            #272727,
+            #202020
+        );
 
-    border: 1px solid #555;
+    border:
+        1px solid #484848;
 
-    border-radius: 10px;
+    border-top:
+        3px solid var(--orange);
+
+    border-radius: var(--radius);
 
     padding: 25px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55);
 }
 
 .modal-content h2 {
     margin-top: 0;
+
+    margin-bottom: 22px;
+
+    font-size: 20px;
 }
 
 .close-button {
     position: absolute;
 
-    right: 15px;
-    top: 10px;
+    right: 14px;
+    top: 8px;
 
     background: none;
 
     border: 0;
 
-    color: #aaa;
+    color: #888;
 
     font-size: 28px;
 
     cursor: pointer;
 }
 
+.close-button:hover {
+    color: var(--orange);
+}
+
+
+/* =========================================================
+   FORMULARIO
+========================================================= */
+
 #eventForm label {
     display: block;
 
     margin-bottom: 15px;
 
-    color: #bbb;
+    color: #aaa;
 
     font-size: 13px;
 }
@@ -476,17 +1084,31 @@ textarea {
 
     margin-top: 6px;
 
-    padding: 10px;
+    padding: 10px 11px;
 
-    background: #171717;
+    background: var(--bg-input);
 
     color: white;
 
-    border: 1px solid #444;
+    border:
+        1px solid #3d3d3d;
 
-    border-radius: 5px;
+    border-radius: 6px;
 
     outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+#eventForm input:focus,
+#eventForm select:focus,
+#eventForm textarea:focus {
+    border-color: var(--orange);
+
+    box-shadow:
+        0 0 0 2px rgba(242, 140, 40, 0.1);
 }
 
 #eventForm textarea {
@@ -513,42 +1135,115 @@ textarea {
 
     border-radius: 6px;
 
-    background: #4738ff;
+    background: var(--orange);
 
-    color: white;
+    color: #171717;
 
     font-weight: bold;
 
     cursor: pointer;
+
+    box-shadow:
+        0 3px 10px rgba(242, 140, 40, 0.2);
+}
+
+.submit-button:hover {
+    background: var(--orange-light);
 }
 
 
-/* =========================
+/* =========================================================
+   HISTÓRICO
+========================================================= */
+
+.event-card.event-past {
+    opacity: 0.6;
+
+    filter: grayscale(20%);
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+    width: 9px;
+}
+
+::-webkit-scrollbar-track {
+    background: #151515;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
+}
+
+
+/* =========================================================
    MÓVIL
-========================= */
+========================================================= */
 
 @media (max-width: 700px) {
 
     .app {
-        width: 98%;
+        width: 96%;
 
-        margin: 10px auto;
+        margin: 10px auto 30px;
     }
 
     .header {
-        padding: 15px;
+        padding: 14px 15px;
+    }
+
+    .header-title-container {
+        gap: 10px;
+    }
+
+    .guild-shield {
+        width: 58px;
+        height: 58px;
     }
 
     .header h1 {
-        font-size: 20px;
+        font-size: 18px;
     }
 
     .header p {
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .today-button {
         padding: 8px 10px;
+
+        font-size: 11px;
+    }
+
+    .calendar-navigation {
+        margin-top: 17px;
+    }
+
+    .calendar-navigation h2 {
+        font-size: 17px;
+    }
+
+    .nav-button {
+        width: 36px;
+        height: 36px;
+
+        font-size: 22px;
+    }
+
+    .weekdays div {
+        padding: 8px 2px;
+
+        font-size: 9px;
     }
 
     .day {
@@ -557,15 +1252,11 @@ textarea {
         padding: 4px;
     }
 
-    .weekdays div {
-        font-size: 9px;
-    }
-
     .day-number {
         width: 23px;
         height: 23px;
 
-        font-size: 11px;
+        font-size: 10px;
     }
 
     .calendar-event {
@@ -586,233 +1277,112 @@ textarea {
         flex-direction: column;
     }
 
+    .section-title h2 {
+        font-size: 18px;
+    }
+
+    .filters-bar {
+        overflow: hidden;
+    }
+
+    .tabs-group {
+        width: 100%;
+
+        overflow-x: auto;
+
+        flex-wrap: nowrap;
+    }
+
+    .filter-tab {
+        white-space: nowrap;
+    }
+
+    .event-card {
+        padding: 14px;
+    }
+
+    .event-card-header {
+        flex-direction: column;
+
+        gap: 5px;
+    }
+
+    .event-card h3 {
+        font-size: 16px;
+    }
+
+    .event-actions {
+        flex-wrap: wrap;
+    }
+
+    .player-profile {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .player-actions {
+        width: 100%;
+
+        justify-content: flex-start;
+    }
+
     .form-row {
         grid-template-columns: 1fr;
     }
-}
 
-/* =========================================
-   PARTICIPANTES
-========================================= */
+    .modal-content {
+        padding: 20px;
 
-.participants-box {
-    margin-top: 15px;
+        max-height: 90vh;
 
-    padding-top: 12px;
-
-    border-top: 1px solid #3d3d3d;
-}
-
-.participants-list {
-    margin-top: 8px;
-}
-
-.participant {
-    display: inline-block;
-
-    background: #303030;
-
-    border-radius: 5px;
-
-    padding: 6px 9px;
-
-    margin: 3px;
-
-    font-size: 12px;
-}
-
-.no-participants {
-    margin-top: 8px;
-
-    color: #777;
-
-    font-size: 12px;
+        overflow-y: auto;
+    }
 }
 
 
-/* =========================================
-   BOTONES DE PARTICIPACIÓN
-========================================= */
+/* =========================================================
+   PANTALLAS MUY PEQUEÑAS
+========================================================= */
 
-.event-actions {
-    margin-top: 15px;
+@media (max-width: 420px) {
 
-    display: flex;
+    .header {
+        padding: 12px;
+    }
 
-    gap: 8px;
-}
+    .guild-shield {
+        width: 48px;
+        height: 48px;
+    }
 
-.join-button,
-.leave-button,
-.full-button {
-    border: 0;
+    .header h1 {
+        font-size: 16px;
+    }
 
-    border-radius: 6px;
+    .header p {
+        font-size: 10px;
+    }
 
-    padding: 9px 14px;
+    .today-button {
+        padding: 7px 8px;
+    }
 
-    cursor: pointer;
+    .day {
+        min-height: 65px;
+    }
 
-    font-weight: bold;
-}
+    .calendar-event {
+        font-size: 8px;
+    }
 
-.join-button {
-    background: #286b3c;
+    .event-actions {
+        flex-direction: column;
+    }
 
-    color: white;
-}
-
-.join-button:hover {
-    background: #347f4a;
-}
-
-.leave-button {
-    background: #6b3030;
-
-    color: white;
-}
-
-.leave-button:hover {
-    background: #813939;
-}
-
-.full-button {
-    background: #3a3a3a;
-
-    color: #777;
-
-    cursor: not-allowed;
-}
-
-/* =========================================
-   PERFIL DEL JUGADOR
-========================================= */
-
-.player-profile {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
-    margin: 15px 0;
-
-    padding: 10px 14px;
-
-    background: #242424;
-
-    border: 1px solid #3d3d3d;
-
-    border-radius: 8px;
-
-}
-
-#playerNameDisplay {
-
-    font-weight: bold;
-
-    color: #eee;
-
-}
-
-#changeNameButton {
-
-    border: 0;
-
-    border-radius: 5px;
-
-    padding: 6px 10px;
-
-    background: #3b3b3b;
-
-    color: white;
-
-    cursor: pointer;
-
-}
-
-#changeNameButton:hover {
-
-    background: #505050;
-
-}
-
-/* Estilos para las pestañas de filtrado */
-.filter-tab {
-    padding: 8px 16px;
-    border: 1px solid #333;
-    background: #1e1e1e;
-    color: #ccc;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.filter-tab:hover {
-    background: #2a2a2a;
-}
-
-.filter-tab.active {
-    background: #e74c3c;
-    color: #fff;
-    border-color: #e74c3c;
-    font-weight: bold;
-}
-
-/* Estilo para tarjetas en el histórico (eventos pasados) */
-.event-card.event-past {
-    opacity: 0.65;
-    filter: grayscale(20%);
-}
-
-/* =========================================
-   BORDES DE TARJETAS INFERIORES POR ACTIVIDAD
-========================================= */
-
-/* Forzado del borde izquierdo de las tarjetas según tipo */
-.event-card.dungeon, .event-card.type-dungeon { border-left: 6px solid #9b59b6 !important; }
-.event-card.quest, .event-card.type-quest { border-left: 6px solid #2ecc71 !important; }
-.event-card.infinite_dreams, .event-card.type-infinite_dreams { border-left: 6px solid #00d2d3 !important; }
-.event-card.commission, .event-card.type-commission { border-left: 6px solid #e67e22 !important; }
-.event-card.raid, .event-card.type-raid { border-left: 6px solid #e74c3c !important; }
-.event-card.farm, .event-card.type-farm { border-left: 6px solid #f1c40f !important; }
-.event-card.wanted, .event-card.type-wanted { border-left: 6px solid #d35400 !important; }
-.event-card.other, .event-card.type-other { border-left: 6px solid #7f8c8d !important; }
-
-/* Badge para mostrar el tipo de actividad arriba del título */
-.event-type-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-    background: #333;
-    color: #fff;
-    margin-bottom: 6px;
-}
-
-.event-type-badge.dungeon { background: #9b59b6; }
-.event-type-badge.quest { background: #2ecc71; color: #111; }
-.event-type-badge.infinite_dreams { background: #00d2d3; color: #111; }
-.event-type-badge.commission { background: #e67e22; }
-.event-type-badge.raid { background: #e74c3c; }
-.event-type-badge.farm { background: #f1c40f; color: #111; }
-.event-type-badge.wanted { background: #d35400; }
-.event-type-badge.other { background: #7f8c8d; }
-
-/* Contenedor que agrupa el escudo y el texto alineados */
-.header-title-container {
-    display: flex;
-    align-items: center;
-    gap: 15px; /* Espacio entre el escudo y el texto */
-}
-
-/* Tamaño y estilo para el escudo del gremio */
-.guild-shield {
-    height: 100px;        /* Se ajusta a la altura proporcional del título */
-    width: auto;          /* Mantiene la proporción original sin deformarse */
-    object-fit: contain;
-    vertical-align: middle;
+    .join-button,
+    .leave-button,
+    .full-button {
+        width: 100%;
+    }
 }
