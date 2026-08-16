@@ -158,12 +158,29 @@ if (categoryFilterSelect) {
 
 }
 
-// Comprueba si la fecha y hora del evento ya pasaron respecto al momento actual
-function isPastEvent(eventDate, eventTime) {
+// ============================================
+// COMPROBAR SI UN EVENTO YA PASÓ
+// ============================================
+
+function isPastEvent(
+    eventDate,
+    eventTime,
+    timezone = "America/Bogota"
+) {
+
     if (!eventDate) return false;
-    const eventTimeStr = eventTime || "23:59";
-    const eventDateTime = new Date(`${eventDate}T${eventTimeStr}`);
-    return eventDateTime < new Date();
+
+    const eventDateTime =
+        eventDateTimeToDate(
+            eventDate,
+            eventTime || "23:59",
+            timezone
+        );
+
+    if (!eventDateTime) return false;
+
+    return eventDateTime.getTime() <
+        Date.now();
 }
 
 
@@ -681,15 +698,142 @@ function formatDate(date) {
     });
 }
 
-function formatTime(time) {
-    const [hours, minutes] = time.split(":");
-    const date = new Date();
-    date.setHours(Number(hours), Number(minutes), 0, 0);
+// ============================================
+// CONVERSIÓN DE HORA SEGÚN ZONA HORARIA
+// ============================================
 
-    return date.toLocaleTimeString("es-ES", {
+function getTimezoneOffset(date, timezone) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(date);
+
+    const values = {};
+
+    parts.forEach(part => {
+        if (part.type !== "literal") {
+            values[part.type] = Number(part.value);
+        }
     });
+
+    const asUTC = Date.UTC(
+        values.year,
+        values.month - 1,
+        values.day,
+        values.hour,
+        values.minute,
+        values.second
+    );
+
+    return asUTC - date.getTime();
+}
+
+
+// Convierte una fecha/hora local de una zona
+// en un objeto Date que representa el instante real.
+function eventDateTimeToDate(eventDate, eventTime, timezone) {
+
+    if (!eventDate) return null;
+
+    const time = eventTime || "23:59";
+
+    const [year, month, day] =
+        eventDate.split("-").map(Number);
+
+    const [hours, minutes] =
+        time.split(":").map(Number);
+
+    // Fecha aproximada en UTC
+    const approximateUTC = new Date(
+        Date.UTC(
+            year,
+            month - 1,
+            day,
+            hours,
+            minutes,
+            0
+        )
+    );
+
+    // Ajustamos según la zona horaria del evento
+    const offset = getTimezoneOffset(
+        approximateUTC,
+        timezone || "America/Bogota"
+    );
+
+    return new Date(
+        approximateUTC.getTime() - offset
+    );
+}
+
+
+// ============================================
+// MOSTRAR HORA EN LA ZONA DEL USUARIO
+// ============================================
+
+function formatTime(
+    time,
+    eventDate = null,
+    eventTimezone = "America/Bogota"
+) {
+
+    if (!time) return "Sin hora";
+
+    // Si no tenemos fecha, mantenemos comportamiento normal
+    if (!eventDate) {
+
+        const [hours, minutes] =
+            time.split(":");
+
+        const date = new Date();
+
+        date.setHours(
+            Number(hours),
+            Number(minutes),
+            0,
+            0
+        );
+
+        return date.toLocaleTimeString(
+            "es-ES",
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+    const eventDateTime =
+        eventDateTimeToDate(
+            eventDate,
+            time,
+            eventTimezone
+        );
+
+    if (!eventDateTime) {
+        return "Sin hora";
+    }
+
+    // Zona horaria del visitante
+    const userTimezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone;
+
+    return eventDateTime.toLocaleTimeString(
+        "es-ES",
+        {
+            timeZone: userTimezone,
+            hour: "2-digit",
+            minute: "2-digit"
+        }
+    );
 }
 
 
@@ -782,7 +926,11 @@ function renderCalendar() {
             eventElement.className = `calendar-event ${event.type}`;
             eventElement.innerHTML = `
                 <span class="event-time">
-                    ${formatTime(event.event_time)}
+                    ${formatTime(
+    event.event_time,
+    event.event_date,
+    event.timezone
+)}
                 </span>
                 ${getEventIcon(event.type)}
                 ${escapeHTML(event.name)}
@@ -822,7 +970,11 @@ function renderEvents() {
     eventsList.innerHTML = "";
 
     const filteredEvents = events.filter(event => {
-        const isPast = isPastEvent(event.event_date, event.event_time);
+        const isPast = isPastEvent(
+    event.event_date,
+    event.event_time,
+    event.timezone
+);
 
         if (currentViewFilter === "upcoming" && isPast) return false;
         if (currentViewFilter === "past" && !isPast) return false;
@@ -854,7 +1006,11 @@ function renderEvents() {
         const eventType = event.type || "other";
         card.className = `event-card ${eventType} type-${eventType}`;
 
-        const isPast = isPastEvent(event.event_date, event.event_time);
+        const isPast = isPastEvent(
+    event.event_date,
+    event.event_time,
+    event.timezone
+);
         if (isPast) {
             card.classList.add("event-past");
         }
@@ -915,7 +1071,11 @@ function renderEvents() {
                     </h3>
                     <div class="event-info">
                         📅 ${formatDate(new Date(`${event.event_date}T12:00:00`))} &nbsp;&nbsp;
-                        🕐 ${formatTime(event.event_time)}
+                        🕐 ${formatTime(
+    event.event_time,
+    event.event_date,
+    event.timezone
+)}
                     </div>
                 </div>
                 <div class="capacity">
@@ -1203,13 +1363,14 @@ if (eventForm) {
                 const { error } = await supabaseClient
                     .from("events")
                     .update({
-                        name: name,
-                        type: type,
-                        event_date: date,
-                        event_time: time,
-                        capacity: capacity,
-                        description: description
-                    })
+    name: name,
+    type: type,
+    event_date: date,
+    event_time: time,
+    capacity: capacity,
+    description: description,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+})
                     .eq("id", editingEventId)
                     .eq("user_id", currentUser.id);
 
