@@ -1208,7 +1208,8 @@ if (eventForm) {
                         event_date: date,
                         event_time: time,
                         capacity: capacity,
-                        description: description
+                        description: description,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone // ⬅️ Añade esta línea aquí
                     })
                     .select()
                     .single();
