@@ -976,47 +976,83 @@ async function processDiscordCallback() {
 
 
         // ====================================
-        // GUARDAR DISCORD EN PERFIL
-        // ====================================
+// GUARDAR DISCORD EN PERFIL
+// ====================================
 
-        const {
-            error:
-                profileError
-        } =
-            await supabaseClient
-                .from("profiles")
-                .update({
+const {
+    error: profileError
+} =
+    await supabaseClient
+        .from("profiles")
+        .update({
 
-                    discord_id:
-                        data.discord.id,
+            discord_id:
+                data.discord.id,
 
-                    discord_username:
-                        data.discord.global_name ||
-                        data.discord.username
+            discord_username:
+                data.discord.global_name ||
+                data.discord.username
 
-                })
-                .eq(
-                    "id",
-                    currentUser.id
-                );
-
-
-        if (profileError) {
-
-            console.error(
-                "Error guardando Discord:",
-                profileError
-            );
+        })
+        .eq(
+            "id",
+            currentUser.id
+        );
 
 
-            alert(
-                "Discord se conectó, pero no se pudo guardar en tu perfil."
-            );
+// ====================================
+// GUARDAR VÍNCULO DISCORD
+// ====================================
+
+const {
+    error: discordAccountError
+} =
+    await supabaseClient
+        .from("discord_accounts")
+        .upsert(
+            {
+
+                user_id:
+                    currentUser.id,
+
+                discord_user_id:
+                    data.discord.id,
+
+                discord_username:
+                    data.discord.username,
+
+                discord_global_name:
+                    data.discord.global_name,
+
+                avatar:
+                    data.discord.avatar
+
+            },
+            {
+                onConflict:
+                    "discord_user_id"
+            }
+        );
 
 
-            return;
+// ====================================
+// COMPROBAR ERROR
+// ====================================
 
-        }
+if (discordAccountError) {
+
+    console.error(
+        "❌ Error guardando discord_accounts:",
+        discordAccountError
+    );
+
+} else {
+
+    console.log(
+        "✅ Cuenta de Discord vinculada correctamente."
+    );
+
+}
 
 
         // ====================================
