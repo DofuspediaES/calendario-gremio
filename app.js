@@ -63,6 +63,17 @@ const eventsList = document.getElementById("eventsList");
 const addEventButton = document.getElementById("addEventButton");
 const eventModal = document.getElementById("eventModal");
 const closeModal = document.getElementById("closeModal");
+console.log("📋 eventForm:", eventForm);
+
+if (eventForm) {
+    console.log("✅ eventForm encontrado");
+
+    eventForm.addEventListener("click", function(e) {
+        console.log("🖱️ Click dentro del formulario:", e.target);
+    });
+} else {
+    console.error("❌ NO SE ENCONTRÓ #eventForm");
+}
 const eventForm = document.getElementById("eventForm");
 const notificationButton = document.getElementById("notificationButton");
 const changeNameButton = document.getElementById("changeNameButton");
