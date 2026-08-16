@@ -809,6 +809,30 @@ function formatTime(
         );
     }
 
+    function formatEventTime(time, timezone) {
+    if (!time) return "Sin hora";
+
+    // Si el evento no tiene zona horaria,
+    // usamos la hora tal como está guardada.
+    if (!timezone) {
+        return formatTime(time);
+    }
+
+    const [hours, minutes] = time.split(":");
+
+    // Creamos una fecha base usando la hora del evento.
+    const date = new Date(
+        `2000-01-01T${hours}:${minutes}:00`
+    );
+
+    return new Intl.DateTimeFormat("es-ES", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    }).format(date);
+}
+
     const eventDateTime =
         eventDateTimeToDate(
             eventDate,
