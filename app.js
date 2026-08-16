@@ -1180,3 +1180,48 @@ async function processDiscordCallback() {
         alert("Ocurrió un error al conectar Discord.");
     }
 }
+
+// ============================================
+// INICIAR APLICACIÓN
+// ============================================
+
+async function initApp() {
+
+    console.log("🚀 Iniciando Calendario WabbitAPP...");
+
+    // 1. Comprobar / crear sesión anónima
+    const loggedIn = await loginAnonymous();
+
+    if (!loggedIn) {
+        console.error("❌ No se pudo iniciar sesión.");
+        return;
+    }
+
+    console.log("✅ Usuario listo:", currentUser.id);
+
+    // 2. Comprobar si estamos regresando de Discord
+    await processDiscordCallback();
+
+    // 3. Cargar perfil
+    await loadProfile();
+
+    // 4. Cargar eventos
+    await loadEvents();
+
+    // 5. Mostrar zona horaria
+    showTimezone();
+
+    // 6. Actualizar botón de notificaciones
+    updateNotificationButton();
+
+    console.log("✅ Calendario iniciado correctamente.");
+}
+
+
+// ============================================
+// ARRANCAR CUANDO CARGUE LA PÁGINA
+// ============================================
+
+document.addEventListener("DOMContentLoaded", () => {
+    initApp();
+});
