@@ -1601,6 +1601,7 @@ async function startApp() {
     // ========================================
 
     await loadEvents();
+    localStorage.setItem("events", JSON.stringify(events));
 
 }
 
