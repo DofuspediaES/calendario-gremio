@@ -22,6 +22,30 @@ const supabaseClient = window.supabase.createClient(
     }
 );
 
+// ============================================
+// COMPROBAR SESIÓN AL CARGAR LA PÁGINA (PON ESTO AQUÍ)
+// ============================================
+
+const btnConectarDiscord = document.getElementById("btn-conectar"); // Asegúrate de que este sea el ID de tu botón
+
+supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+        console.log("Sesión detectada al recargar:", session.user);
+        if (btnConectarDiscord) btnConectarDiscord.style.display = "none";
+    } else {
+        console.log("No hay sesión activa.");
+        if (btnConectarDiscord) btnConectarDiscord.style.display = "block";
+    }
+});
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        if (btnConectarDiscord) btnConectarDiscord.style.display = "none";
+    } else {
+        if (btnConectarDiscord) btnConectarDiscord.style.display = "block";
+    }
+});
+
 
 // ============================================
 // ELEMENTOS DEL DOM
