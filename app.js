@@ -113,6 +113,50 @@ let editingEventId = null;
 let currentViewFilter = "upcoming"; // 'upcoming', 'my_events', 'past'
 let currentCategoryFilter = "all";  // 'all', 'raid', 'dungeon', 'quest', etc.
 
+// ============================================
+// CONTROL DE PESTAÑAS Y FILTROS
+// ============================================
+
+document.querySelectorAll(".filter-tab").forEach(tab => {
+
+    tab.addEventListener("click", () => {
+
+        // Cambiar vista
+        currentViewFilter = tab.dataset.view;
+
+        // Cambiar apariencia de pestaña activa
+        document.querySelectorAll(".filter-tab").forEach(t => {
+            t.classList.remove("active");
+        });
+
+        tab.classList.add("active");
+
+        // Actualizar lista
+        renderEvents();
+    });
+
+});
+
+
+// ============================================
+// FILTRO POR TIPO DE ACTIVIDAD
+// ============================================
+
+const categoryFilterSelect =
+    document.getElementById("categoryFilterSelect");
+
+if (categoryFilterSelect) {
+
+    categoryFilterSelect.addEventListener("change", () => {
+
+        currentCategoryFilter =
+            categoryFilterSelect.value;
+
+        renderEvents();
+
+    });
+
+}
 
 // Comprueba si la fecha y hora del evento ya pasaron respecto al momento actual
 function isPastEvent(eventDate, eventTime) {
