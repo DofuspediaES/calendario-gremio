@@ -137,53 +137,233 @@ async function loginAnonymous() {
 
 
 // ============================================
-// CARGAR PERFIL
+// CARGAR PERFIL (MODIFICADO)
 // ============================================
 
 async function loadProfile() {
     if (!currentUser) return;
 
-    const { data, error } = await supabaseClient
+    const {
+        data,
+        error
+    } = await supabaseClient
         .from("profiles")
         .select("*")
-        .eq("id", currentUser.id)
+        .eq(
+            "id",
+            currentUser.id
+        )
         .maybeSingle();
 
     if (error) {
-        console.error("Error cargando perfil:", error);
+        console.error(
+            "Error cargando perfil:",
+            error
+        );
         return;
     }
 
+    // ========================================
+    // PERFIL NO EXISTE
+    // ========================================
+
     if (!data) {
-        const playerName = prompt("¿Cuál es tu nombre dentro del gremio?");
-
-        if (!playerName || !playerName.trim()) {
-            alert("Necesitas poner un nombre.");
-            return;
-        }
-
-        const cleanName = playerName.trim();
-
-        const { data: newProfile, error: createError } = await supabaseClient
-            .from("profiles")
-            .insert({
-                id: currentUser.id,
-                player_name: cleanName
-            })
-            .select()
-            .single();
-
-        if (createError) {
-            console.error("Error creando perfil:", createError);
-            return;
-        }
-
-        currentProfile = newProfile;
-    } else {
-        currentProfile = data;
+        await showFirstLoginModal();
+        return;
     }
 
+    // ========================================
+    // PERFIL EXISTE
+    // ========================================
+
+    currentProfile = data;
     updateProfileDisplay();
+}
+
+// ============================================
+// PRIMER ACCESO (NUEVO)
+// ============================================
+
+function showFirstLoginModal() {
+    return new Promise((resolve) => {
+        const modal = document.createElement("div");
+
+        modal.style.position = "fixed";
+        modal.style.top = "0";
+        modal.style.left = "0";
+        modal.style.width = "100%";
+        modal.style.height = "100%";
+        modal.style.background = "rgba(0,0,0,0.75)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = "99999";
+
+        modal.innerHTML = `
+            <div style="
+                background:#242424;
+                color:white;
+                width:90%;
+                max-width:420px;
+                padding:25px;
+                border-radius:12px;
+                box-sizing:border-box;
+                text-align:center;
+                box-shadow:0 10px 40px rgba(0,0,0,.5);
+            ">
+                <h2 style="
+                    margin-top:0;
+                    margin-bottom:10px;
+                ">
+                    👋 Bienvenido
+                </h2>
+
+                <p style="
+                    color:#ccc;
+                    margin-bottom:20px;
+                ">
+                    ¿Cómo quieres identificarte en el calendario?
+                </p>
+
+                <input
+                    id="firstLoginName"
+                    type="text"
+                    placeholder="Tu nombre en el gremio"
+                    maxlength="30"
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:12px;
+                        border-radius:6px;
+                        border:1px solid #555;
+                        background:#181818;
+                        color:white;
+                        margin-bottom:10px;
+                        font-size:14px;
+                    "
+                >
+
+                <button
+                    id="firstLoginContinue"
+                    style="
+                        width:100%;
+                        padding:12px;
+                        border:0;
+                        border-radius:6px;
+                        background:#5865F2;
+                        color:white;
+                        font-size:14px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    Continuar
+                </button>
+
+                <div style="
+                    margin:18px 0;
+                    color:#777;
+                ">
+                    ─────────── O ───────────
+                </div>
+
+                <button
+                    id="firstLoginDiscord"
+                    style="
+                        width:100%;
+                        padding:12px;
+                        border:0;
+                        border-radius:6px;
+                        background:#5865F2;
+                        color:white;
+                        font-size:14px;
+                        cursor:pointer;
+                        font-weight:bold;
+                    "
+                >
+                    🎮 Continuar con Discord
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const nameInput = modal.querySelector("#firstLoginName");
+        const continueButton = modal.querySelector("#firstLoginContinue");
+        const discordButton = modal.querySelector("#firstLoginDiscord");
+
+        // ====================================
+        // CONTINUAR CON NOMBRE
+        // ====================================
+
+        continueButton.addEventListener(
+            "click",
+            async () => {
+                const playerName = nameInput.value.trim();
+
+                if (!playerName) {
+                    alert("Necesitas poner un nombre.");
+                    return;
+                }
+
+                continueButton.disabled = true;
+
+                const {
+                    data: newProfile,
+                    error: createError
+                } = await supabaseClient
+                    .from("profiles")
+                    .insert({
+                        id: currentUser.id,
+                        player_name: playerName
+                    })
+                    .select()
+                    .single();
+
+                if (createError) {
+                    console.error("Error creando perfil:", createError);
+                    alert("No se pudo crear tu perfil.");
+                    continueButton.disabled = false;
+                    return;
+                }
+
+                currentProfile = newProfile;
+                modal.remove();
+                updateProfileDisplay();
+                resolve();
+            }
+        );
+
+        // ====================================
+        // CONTINUAR CON DISCORD
+        // ====================================
+
+        discordButton.addEventListener(
+            "click",
+            () => {
+                sessionStorage.setItem(
+                    "discord_first_login",
+                    "true"
+                );
+                connectDiscord();
+            }
+        );
+
+        // ====================================
+        // ENTER EN EL CAMPO
+        // ====================================
+
+        nameInput.addEventListener(
+            "keydown",
+            event => {
+                if (event.key === "Enter") {
+                    continueButton.click();
+                }
+            }
+        );
+
+        nameInput.focus();
+    });
 }
 
 
@@ -824,283 +1004,185 @@ async function leaveEvent(eventId) {
 // ============================================
 
 if (changeNameButton) {
-
     changeNameButton.addEventListener(
         "click",
         changePlayerName
     );
-
 }
 
 // ============================================
 // BOTÓN DISCORD
 // ============================================
 
-const discordButton =
-    document.getElementById(
-        "discordButton"
-    );
-
+const discordButton = document.getElementById("discordButton");
 
 // ============================================
 // ID DE TU APLICACIÓN DISCORD
 // ============================================
 
-const DISCORD_CLIENT_ID =
-    "1538010946130419762";
-
+const DISCORD_CLIENT_ID = "1538010946130419762";
 
 // ============================================
 // URL DE RETORNO DE DISCORD
 // ============================================
 
-const DISCORD_REDIRECT_URI =
-    "https://dofuspediaes.github.io/calendario-gremio/";
-
+const DISCORD_REDIRECT_URI = "https://dofuspediaes.github.io/calendario-gremio/";
 
 // ============================================
 // CONECTAR DISCORD
 // ============================================
 
 function connectDiscord() {
-
     const discordURL =
         "https://discord.com/oauth2/authorize" +
         "?client_id=" +
-        encodeURIComponent(
-            DISCORD_CLIENT_ID
-        ) +
+        encodeURIComponent(DISCORD_CLIENT_ID) +
         "&response_type=code" +
         "&redirect_uri=" +
-        encodeURIComponent(
-            DISCORD_REDIRECT_URI
-        ) +
+        encodeURIComponent(DISCORD_REDIRECT_URI) +
         "&scope=identify";
 
-    window.location.href =
-        discordURL;
-
+    window.location.href = discordURL;
 }
 
 // ============================================
-// PROCESAR REGRESO DE DISCORD
+// PROCESAR REGRESO DE DISCORD (MODIFICADO)
 // ============================================
 
 async function processDiscordCallback() {
-
-    const urlParams =
-        new URLSearchParams(
-            window.location.search
-        );
-
-
-    const code =
-        urlParams.get("code");
-
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
 
     if (!code) {
-
         return;
-
     }
 
-
-    console.log(
-        "Código de Discord recibido."
-    );
-
+    console.log("Código de Discord recibido.");
 
     try {
-
-        const {
-            data,
-            error
-        } =
-            await supabaseClient.functions.invoke(
-                "discord-oauth",
-                {
-
-                    body: {
-
-                        code:
-                            code
-
-                    }
-
-                }
-            );
-
-
-        if (error) {
-
-            console.error(
-                "Error OAuth Discord:",
-                error
-            );
-
-
-            alert(
-                "No se pudo conectar Discord."
-            );
-
-
-            return;
-
-        }
-
-
-        if (
-            !data ||
-            !data.success
-        ) {
-
-            console.error(
-                data
-            );
-
-
-            alert(
-                "Discord no pudo ser conectado."
-            );
-
-
-            return;
-
-        }
-
-
-        console.log(
-            "Discord conectado:",
-            data.discord
-        );
-
-
-        // ====================================
-// GUARDAR DISCORD EN PERFIL
-// ====================================
-
-const {
-    error: profileError
-} =
-    await supabaseClient
-        .from("profiles")
-        .update({
-
-            discord_id:
-                data.discord.id,
-
-            discord_username:
-                data.discord.global_name ||
-                data.discord.username
-
-        })
-        .eq(
-            "id",
-            currentUser.id
-        );
-
-
-// ====================================
-// GUARDAR VÍNCULO DISCORD
-// ====================================
-
-const {
-    error: discordAccountError
-} =
-    await supabaseClient
-        .from("discord_accounts")
-        .upsert(
+        const { data, error } = await supabaseClient.functions.invoke(
+            "discord-oauth",
             {
-
-                user_id:
-                    currentUser.id,
-
-                discord_user_id:
-                    data.discord.id,
-
-                discord_username:
-                    data.discord.username,
-
-                discord_global_name:
-                    data.discord.global_name,
-
-                avatar:
-                    data.discord.avatar
-
-            },
-            {
-                onConflict:
-                    "discord_user_id"
+                body: { code }
             }
         );
 
+        if (error) {
+            console.error("Error OAuth Discord:", error);
+            alert("No se pudo conectar Discord.");
+            return;
+        }
 
-// ====================================
-// COMPROBAR ERROR
-// ====================================
+        if (!data || !data.success) {
+            console.error(data);
+            alert("Discord no pudo ser conectado.");
+            return;
+        }
 
-if (discordAccountError) {
+        console.log("Discord conectado:", data.discord);
 
-    console.error(
-        "❌ Error guardando discord_accounts:",
-        discordAccountError
-    );
+        // ====================================
+        // GUARDAR DISCORD EN PERFIL
+        // ====================================
 
-} else {
+        let profileError = null;
 
-    console.log(
-        "✅ Cuenta de Discord vinculada correctamente."
-    );
+        // ========================================
+        // ¿ES PRIMER ACCESO?
+        // ========================================
 
-}
+        const isFirstDiscordLogin = sessionStorage.getItem("discord_first_login") === "true";
 
+        if (isFirstDiscordLogin) {
+            const suggestedName = data.discord.global_name || data.discord.username || "Jugador";
+
+            const { error } = await supabaseClient
+                .from("profiles")
+                .insert({
+                    id: currentUser.id,
+                    player_name: suggestedName,
+                    discord_id: data.discord.id,
+                    discord_username: data.discord.global_name || data.discord.username
+                });
+
+            profileError = error;
+        } else {
+            const { error } = await supabaseClient
+                .from("profiles")
+                .update({
+                    discord_id: data.discord.id,
+                    discord_username: data.discord.global_name || data.discord.username
+                })
+                .eq("id", currentUser.id);
+
+            profileError = error;
+        }
+
+        // ====================================
+        // GUARDAR VÍNCULO DISCORD
+        // ====================================
+
+        const { error: discordAccountError } = await supabaseClient
+            .from("discord_accounts")
+            .upsert(
+                {
+                    user_id: currentUser.id,
+                    discord_user_id: data.discord.id,
+                    discord_username: data.discord.username,
+                    discord_global_name: data.discord.global_name,
+                    avatar: data.discord.avatar
+                },
+                {
+                    onConflict: "discord_user_id"
+                }
+            );
+
+        if (discordAccountError) {
+            console.error("❌ Error guardando discord_accounts:", discordAccountError);
+        } else {
+            console.log("✅ Cuenta de Discord vinculada correctamente.");
+        }
+
+        // ========================================
+        // CARGAR PERFIL CREADO POR DISCORD
+        // ========================================
+
+        if (isFirstDiscordLogin && !profileError) {
+            const { data: profileData, error: profileLoadError } = await supabaseClient
+                .from("profiles")
+                .select("*")
+                .eq("id", currentUser.id)
+                .single();
+
+            if (!profileLoadError) {
+                currentProfile = profileData;
+                updateProfileDisplay();
+            }
+
+            sessionStorage.removeItem("discord_first_login");
+        }
 
         // ====================================
         // ACTUALIZAR BOTÓN
         // ====================================
 
         if (discordButton) {
-
-            discordButton.textContent =
-                `🎮 ${data.discord.global_name || data.discord.username}`;
-
-            discordButton.classList.add(
-                "discord-connected"
-            );
-
+            discordButton.textContent = `🎮 ${data.discord.global_name || data.discord.username}`;
+            discordButton.classList.add("discord-connected");
         }
-
 
         // ====================================
         // LIMPIAR URL
         // ====================================
 
-        window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-        );
+        window.history.replaceState({}, document.title, window.location.pathname);
 
-
-        alert(
-            "✅ Discord conectado correctamente."
-        );
-
+        alert("✅ Discord conectado correctamente.");
 
     } catch (error) {
-
-        console.error(
-            "Error conectando Discord:",
-            error
-        );
-
-
-        alert(
-            "Ocurrió un error al conectar Discord."
-        );
-
+        console.error("Error conectando Discord:", error);
+        alert("Ocurrió un error al conectar Discord.");
     }
-
 }
 
 
@@ -1109,84 +1191,53 @@ if (discordAccountError) {
 // ============================================
 
 if (discordButton) {
-
     discordButton.addEventListener(
         "click",
         connectDiscord
     );
-
 }
 
-
 if (notificationButton) {
-
     notificationButton.addEventListener(
         "click",
         enableNotifications
     );
-
 }
 
-
 if (previousMonthButton) {
-
     previousMonthButton.addEventListener(
         "click",
         () => {
-
-            currentDate.setMonth(
-                currentDate.getMonth() - 1
-            );
-
+            currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar();
-
         }
     );
-
 }
 
-
 if (nextMonthButton) {
-
     nextMonthButton.addEventListener(
         "click",
         () => {
-
-            currentDate.setMonth(
-                currentDate.getMonth() + 1
-            );
-
+            currentDate.setMonth(currentDate.getMonth() + 1);
             renderCalendar();
-
         }
     );
-
 }
 
-
 if (todayButton) {
-
     todayButton.addEventListener(
         "click",
         () => {
-
-            currentDate =
-                new Date();
-
+            currentDate = new Date();
             renderCalendar();
-
         }
     );
-
 }
 
-
 if (addEventButton) {
-
     addEventButton.addEventListener(
         "click",
         () => {
-
             editingEventId = null;
             eventForm.reset();
 
@@ -1206,382 +1257,183 @@ if (addEventButton) {
             const modalTitle = eventModal.querySelector("h2");
             if (modalTitle) modalTitle.textContent = "➕ Crear Evento";
 
-            eventModal.classList.remove(
-                "hidden"
-            );
-
+            eventModal.classList.remove("hidden");
         }
     );
-
 }
 
-
 if (closeModal) {
-
     closeModal.addEventListener(
         "click",
         () => {
-
-            eventModal.classList.add(
-                "hidden"
-            );
-
+            eventModal.classList.add("hidden");
         }
     );
-
 }
 
-
 if (eventModal) {
-
     eventModal.addEventListener(
         "click",
         event => {
-
-            if (
-                event.target === eventModal
-            ) {
-
-                eventModal.classList.add(
-                    "hidden"
-                );
-
+            if (event.target === eventModal) {
+                eventModal.classList.add("hidden");
             }
-
         }
     );
-
 }
 
-
 if (eventForm) {
-
     eventForm.addEventListener(
         "submit",
         async event => {
-
             event.preventDefault();
-
 
             // ========================================
             // COMPROBAR USUARIO
             // ========================================
 
             if (!currentUser) {
-
-                alert(
-                    "Todavía no estás conectado."
-                );
-
+                alert("Todavía no estás conectado.");
                 return;
-
             }
-
 
             // ========================================
             // OBTENER DATOS
             // ========================================
 
-            const name =
-                document.getElementById(
-                    "eventName"
-                ).value;
-
-
-            const type =
-                document.getElementById(
-                    "eventType"
-                ).value;
-
-
-            const date =
-                document.getElementById(
-                    "eventDate"
-                ).value;
-
-
-            const time =
-                document.getElementById(
-                    "eventTime"
-                ).value;
-
-
-            const capacity =
-                Number(
-                    document.getElementById(
-                        "eventCapacity"
-                    ).value
-                );
-
-
-            const description =
-                document.getElementById(
-                    "eventDescription"
-                ).value;
-
+            const name = document.getElementById("eventName").value;
+            const type = document.getElementById("eventType").value;
+            const date = document.getElementById("eventDate").value;
+            const time = document.getElementById("eventTime").value;
+            const capacity = Number(document.getElementById("eventCapacity").value);
+            const description = document.getElementById("eventDescription").value;
 
             // ========================================
             // VALIDAR FECHA Y HORA
             // ========================================
 
-            const selectedDateTime =
-                new Date(`${date}T${time}`);
+            const selectedDateTime = new Date(`${date}T${time}`);
+            const currentDateTime = new Date();
 
-
-            const currentDateTime =
-                new Date();
-
-
-            if (
-                selectedDateTime <
-                currentDateTime
-            ) {
-
-                alert(
-                    "⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado."
-                );
-
+            if (selectedDateTime < currentDateTime) {
+                alert("⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado.");
                 return;
-
             }
 
+            // ========================================
+            // DATOS DEL EVENTO
+            // ========================================
 
-// ========================================
-// DATOS DEL EVENTO
-// ========================================
+            const eventData = {
+                user_id: currentUser.id,
+                name: name,
+                type: type,
+                event_date: date,
+                event_time: time,
+                timezone: getTimezone(),
+                capacity: capacity,
+                description: description
+            };
 
-const eventData = {
+            // ========================================
+            // VARIABLE DE RESULTADO
+            // ========================================
 
-    user_id:
-        currentUser.id,
+            let savedEvent = null;
+            let error = null;
 
-    name:
-        name,
+            // ============================================
+            // EDITAR EVENTO
+            // ============================================
 
-    type:
-        type,
+            if (editingEventId) {
+                const res = await supabaseClient
+                    .from("events")
+                    .update(eventData)
+                    .eq("id", editingEventId)
+                    .select()
+                    .single();
 
-    event_date:
-        date,
+                error = res.error;
+                savedEvent = res.data;
+            }
 
-    event_time:
-        time,
+            // ============================================
+            // CREAR EVENTO
+            // ============================================
 
-    timezone:
-        getTimezone(),
+            else {
+                const res = await supabaseClient
+                    .from("events")
+                    .insert(eventData)
+                    .select()
+                    .single();
 
-    capacity:
-        capacity,
+                error = res.error;
+                savedEvent = res.data;
+            }
 
-    description:
-        description
+            // ========================================
+            // ERROR SUPABASE
+            // ========================================
 
-};
+            if (error) {
+                console.error("Error guardando evento:", error);
+                alert("No se pudo guardar el evento.");
+                return;
+            }
 
+            // ============================================
+            // PUBLICAR EN DISCORD
+            // ============================================
 
-// ========================================
-// VARIABLE DE RESULTADO
-// ========================================
+            if (savedEvent && !editingEventId) {
+                try {
+                    const { data: discordData, error: discordError } = await supabaseClient
+                        .functions
+                        .invoke(
+                            "discord-event",
+                            { body: savedEvent }
+                        );
 
-let savedEvent = null;
+                    if (discordError) {
+                        console.error("Error enviando a Discord:", discordError);
+                        alert("⚠️ La actividad se creó, pero no pudo publicarse en Discord.");
+                    } else if (discordData && discordData.success) {
+                        // ==================================
+                        // GUARDAR ID DEL MENSAJE DISCORD
+                        // ==================================
 
-let error = null;
+                        await supabaseClient
+                            .from("events")
+                            .update({
+                                discord_message_id: discordData.message_id,
+                                discord_channel_id: discordData.channel_id
+                            })
+                            .eq("id", savedEvent.id);
 
-
-// ========================================
-// CREAR / EDITAR
-// ========================================
-
-// (Nota: se eliminaron las declaraciones duplicadas de error y savedEvent que tenías abajo)
-
-// ============================================
-// EDITAR EVENTO
-// ============================================
-
-if (editingEventId) {
-
-    const res =
-        await supabaseClient
-            .from("events")
-            .update(eventData)
-            .eq(
-                "id",
-                editingEventId
-            )
-            .select()
-            .single();
-
-
-    error =
-        res.error;
-
-
-    savedEvent =
-        res.data;
-
-}
-
-
-// ============================================
-// CREAR EVENTO
-// ============================================
-
-else {
-
-    const res =
-        await supabaseClient
-            .from("events")
-            .insert(
-                eventData
-            )
-            .select()
-            .single();
-
-
-    error =
-        res.error;
-
-
-    savedEvent =
-        res.data;
-
-}
-
-
-// ========================================
-// ERROR SUPABASE
-// ========================================
-
-if (error) {
-
-    console.error(
-        "Error guardando evento:",
-        error
-    );
-
-
-    alert(
-        "No se pudo guardar el evento."
-    );
-
-
-    return;
-
-}
-
-
-// ============================================
-// PUBLICAR EN DISCORD
-// ============================================
-
-if (
-    savedEvent &&
-    !editingEventId
-) {
-
-    try {
-
-        const {
-            data:
-                discordData,
-            error:
-                discordError
-        } =
-            await supabaseClient
-                .functions
-                .invoke(
-                    "discord-event",
-                    {
-
-                        body:
-                            savedEvent
-
+                        console.log("✅ Actividad publicada en Discord.");
                     }
-                );
+                } catch (discordError) {
+                    console.error("Error Discord:", discordError);
+                }
+            }
 
+            // ========================================
+            // LIMPIAR
+            // ========================================
 
-        if (discordError) {
+            editingEventId = null;
+            eventForm.reset();
+            eventModal.classList.add("hidden");
 
-            console.error(
-                "Error enviando a Discord:",
-                discordError
-            );
+            // ========================================
+            // RECARGAR EVENTOS
+            // ========================================
 
-            alert(
-                "⚠️ La actividad se creó, pero no pudo publicarse en Discord."
-            );
-
-        }
-
-        else if (
-            discordData &&
-            discordData.success
-        ) {
-
-            // ==================================
-            // GUARDAR ID DEL MENSAJE DISCORD
-            // ==================================
-
-            await supabaseClient
-                .from("events")
-                .update({
-
-                    discord_message_id:
-                        discordData.message_id,
-
-                    discord_channel_id:
-                        discordData.channel_id
-
-                })
-                .eq(
-                    "id",
-                    savedEvent.id
-                );
-
-
-            console.log(
-                "✅ Actividad publicada en Discord."
-            );
-
-        }
-
-    } catch (discordError) {
-
-        console.error(
-            "Error Discord:",
-            discordError
-        );
-
-    }
-
-}
-
-
-// ========================================
-// LIMPIAR
-// ========================================
-
-editingEventId =
-    null;
-
-
-eventForm.reset();
-
-
-eventModal.classList.add(
-    "hidden"
-);
-
-
-// ========================================
-// RECARGAR EVENTOS
-// ========================================
-
-await loadEvents();
-
+            await loadEvents();
         }
     );
-
 }
 
 // Pestañas de Vista (Próximos / Mis Eventos / Histórico)
@@ -1610,26 +1462,14 @@ if (categoryFilterSelect) {
 // ============================================
 
 if ("serviceWorker" in navigator) {
-
     navigator.serviceWorker
         .register("sw.js")
         .then(registration => {
-
-            console.log(
-                "Service Worker registrado con éxito:",
-                registration.scope
-            );
-
+            console.log("Service Worker registrado con éxito:", registration.scope);
         })
         .catch(error => {
-
-            console.error(
-                "Error registrando Service Worker:",
-                error
-            );
-
+            console.error("Error registrando Service Worker:", error);
         });
-
 }
 
 
@@ -1638,23 +1478,14 @@ if ("serviceWorker" in navigator) {
 // ============================================
 
 async function startApp() {
-
     showTimezone();
 
-
-    const connected =
-        await loginAnonymous();
-
-
+    const connected = await loginAnonymous();
     if (!connected) {
-
         return;
-
     }
 
-
     await loadProfile();
-
 
     // ========================================
     // PROCESAR DISCORD
@@ -1662,14 +1493,12 @@ async function startApp() {
 
     await processDiscordCallback();
 
-
     // ========================================
     // CARGAR EVENTOS
     // ========================================
 
     await loadEvents();
     localStorage.setItem("events", JSON.stringify(events));
-
 }
 
 
@@ -1680,5 +1509,3 @@ async function startApp() {
 window.addEventListener("DOMContentLoaded", () => {
     startApp();
 });
-
-
