@@ -1012,9 +1012,7 @@ if (changeNameButton) {
 // ============================================
 
 if (eventForm) {
-
     eventForm.addEventListener("submit", async (e) => {
-
         e.preventDefault();
 
         if (!currentUser) {
@@ -1022,191 +1020,188 @@ if (eventForm) {
             return;
         }
 
-        const name =
-            document.getElementById("eventName").value.trim();
+        const name = document.getElementById("eventName").value.trim();
+        const type = document.getElementById("eventType").value;
+        const date = document.getElementById("eventDate").value;
+        const time = document.getElementById("eventTime").value;
+        const capacity = Number(
+            document.getElementById("eventCapacity").value
+        );
+        const description = document
+            .getElementById("eventDescription")
+            .value
+            .trim();
 
-        const type =
-            document.getElementById("eventType").value;
-
-        const date =
-            document.getElementById("eventDate").value;
-
-        const time =
-            document.getElementById("eventTime").value;
-
-        const capacity =
-            Number(
-                document.getElementById("eventCapacity").value
-            );
-
-        const description =
-            document.getElementById("eventDescription").value.trim();
-
-
-        // ========================================
-        // VALIDAR
-        // ========================================
-
-        if (
-            !name ||
-            !type ||
-            !date ||
-            !time ||
-            !capacity
-        ) {
+        if (!name || !type || !date || !time || !capacity) {
             alert("Completa todos los campos obligatorios.");
             return;
         }
 
-
         const submitButton =
-            eventForm.querySelector(
-                'button[type="submit"]'
-            );
-
+            eventForm.querySelector(".submit-button");
 
         if (submitButton) {
-
             submitButton.disabled = true;
-
-            submitButton.textContent =
-                editingEventId
-                    ? "Guardando..."
-                    : "Creando...";
+            submitButton.textContent = "Guardando...";
         }
-
 
         try {
 
-            // ====================================
-            // EDITAR EVENTO
-            // ====================================
+            // ========================================
+            // EDITAR EVENTO EXISTENTE
+            // ========================================
 
             if (editingEventId) {
 
-                const {
-                    error
-                } = await supabaseClient
-
+                const { error } = await supabaseClient
                     .from("events")
-
                     .update({
-
-                        name:
-                            name,
-
-                        type:
-                            type,
-
-                        event_date:
-                            date,
-
-                        event_time:
-                            time,
-
-                        capacity:
-                            capacity,
-
-                        description:
-                            description
-
+                        name: name,
+                        type: type,
+                        event_date: date,
+                        event_time: time,
+                        capacity: capacity,
+                        description: description
                     })
-
-                    .eq(
-                        "id",
-                        editingEventId
-                    );
-
+                    .eq("id", editingEventId)
+                    .eq("user_id", currentUser.id);
 
                 if (error) {
-
                     console.error(
-                        "❌ Error editando evento:",
+                        "Error editando evento:",
                         error
                     );
 
                     alert(
-                        "No se pudo editar el evento."
+                        "No se pudo editar la actividad."
                     );
 
                     return;
                 }
 
-
-                alert(
-                    "✅ Evento actualizado correctamente."
-                );
+                alert("✅ Actividad actualizada correctamente.");
 
             }
 
-            // ====================================
-            // CREAR EVENTO
-            // ====================================
+            // ========================================
+            // CREAR EVENTO NUEVO
+            // ========================================
 
             else {
 
-                const {
-                    data,
-                    error
-                } = await supabaseClient
-
-                    .from("events")
-
-                    .insert({
-
-                        user_id:
-                            currentUser.id,
-
-                        name:
-                            name,
-
-                        type:
-                            type,
-
-                        event_date:
-                            date,
-
-                        event_time:
-                            time,
-
-                        capacity:
-                            capacity,
-
-                        description:
-                            description
-
-                    })
-
-                    .select()
-                    .single();
-
+                const { data, error } =
+                    await supabaseClient
+                        .from("events")
+                        .insert({
+                            user_id: currentUser.id,
+                            name: name,
+                            type: type,
+                            event_date: date,
+                            event_time: time,
+                            capacity: capacity,
+                            description: description
+                        })
+                        .select()
+                        .single();
 
                 if (error) {
-
                     console.error(
-                        "❌ Error creando evento:",
+                        "Error creando evento:",
                         error
                     );
 
                     alert(
-                        "No se pudo crear el evento.\n\n" +
-                        error.message
+                        "No se pudo crear la actividad."
                     );
 
                     return;
                 }
-
 
                 console.log(
                     "✅ Evento creado:",
                     data
                 );
 
-
                 alert(
                     "✅ Actividad creada correctamente."
                 );
+
+                // ====================================
+                // AVISAR A LA FUNCIÓN DE DISCORD
+                // ====================================
+
+                try {
+
+                    const { data: discordData, error: discordError } =
+                        await supabaseClient.functions.invoke(
+                            "discord-event",
+                            {
+                                body: data
+                            }
+                        );
+
+                    if (discordError) {
+                        console.error(
+                            "⚠️ Error publicando en Discord:",
+                            discordError
+                        );
+                    } else {
+                        console.log(
+                            "📢 Discord respondió:",
+                            discordData
+                        );
+                    }
+
+                } catch (discordError) {
+
+                    console.error(
+                        "⚠️ Error enviando a Discord:",
+                        discordError
+                    );
+
+                }
             }
+
+            // ========================================
+            // LIMPIAR
+            // ========================================
+
+            editingEventId = null;
+
+            if (eventModal) {
+                eventModal.classList.add("hidden");
+            }
+
+            eventForm.reset();
+
+            // Restaurar valores
+            document.getElementById("eventCapacity").value = 8;
+
+            await loadEvents();
+
+        } catch (error) {
+
+            console.error(
+                "❌ Error procesando formulario:",
+                error
+            );
+
+            alert(
+                "Ocurrió un error al procesar la actividad."
+            );
+
+        } finally {
+
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent =
+                    "Crear actividad";
+            }
+
+        }
+
+    });
+}
 
 
             // ====================================
