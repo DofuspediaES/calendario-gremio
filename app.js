@@ -64,7 +64,21 @@ const addEventButton = document.getElementById("addEventButton");
 const eventModal = document.getElementById("eventModal");
 const closeModal = document.getElementById("closeModal");
 const eventForm = document.getElementById("eventForm");
+
 console.log("🧪 eventForm encontrado:", eventForm);
+
+const submitButtonTest = document.querySelector(
+    "#eventForm .submit-button"
+);
+
+console.log("🧪 BOTÓN ENCONTRADO:", submitButtonTest);
+
+if (submitButtonTest) {
+    submitButtonTest.addEventListener("click", () => {
+        console.log("🔥🔥 CLICK DIRECTO EN CREAR ACTIVIDAD");
+    });
+}
+
 const notificationButton = document.getElementById("notificationButton");
 const changeNameButton = document.getElementById("changeNameButton");
 
