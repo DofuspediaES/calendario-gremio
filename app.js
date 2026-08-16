@@ -1016,11 +1016,13 @@ if (changeNameButton) {
 
 if (eventForm) {
 
+    console.log("🟢 Registrando listener del formulario...");
+
     eventForm.addEventListener("submit", async (e) => {
 
         e.preventDefault();
 
-        console.log("🟢 Formulario de evento enviado.");
+        console.log("🟢🟢 SUBMIT DETECTADO");
 
         if (!currentUser) {
             alert("No estás conectado.");
