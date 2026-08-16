@@ -64,7 +64,19 @@ const addEventButton = document.getElementById("addEventButton");
 const eventModal = document.getElementById("eventModal");
 const closeModal = document.getElementById("closeModal");
 const eventForm = document.getElementById("eventForm");
+const createEventButton = document.getElementById("createEventButton");
 
+if (createEventButton) {
+    createEventButton.addEventListener("click", () => {
+        console.log("🔥 BOTÓN CREAR ACTIVIDAD PRESIONADO");
+        eventForm.dispatchEvent(
+            new Event("submit", {
+                bubbles: true,
+                cancelable: true
+            })
+        );
+    });
+}
 console.log("🧪 eventForm encontrado:", eventForm);
 
 const submitButtonTest = document.querySelector(
