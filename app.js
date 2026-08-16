@@ -809,28 +809,85 @@ function formatTime(
         );
     }
 
-    function formatEventTime(time, timezone) {
-    if (!time) return "Sin hora";
-
-    // Si el evento no tiene zona horaria,
-    // usamos la hora tal como está guardada.
-    if (!timezone) {
-        return formatTime(time);
+function formatEventTime(eventDate, eventTime, eventTimezone) {
+    if (!eventDate || !eventTime) {
+        return "Sin hora";
     }
 
-    const [hours, minutes] = time.split(":");
+    if (!eventTimezone) {
+        return formatTime(eventTime);
+    }
 
-    // Creamos una fecha base usando la hora del evento.
-    const date = new Date(
-        `2000-01-01T${hours}:${minutes}:00`
+    const viewerTimezone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Obtener la diferencia UTC de una zona horaria
+    function getTimezoneOffset(timeZone, date) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(date);
+
+        const values = {};
+
+        parts.forEach(part => {
+            if (part.type !== "literal") {
+                values[part.type] = Number(part.value);
+            }
+        });
+
+        const asUTC = Date.UTC(
+            values.year,
+            values.month - 1,
+            values.day,
+            values.hour,
+            values.minute,
+            values.second
+        );
+
+        return asUTC - date.getTime();
+    }
+
+    const [year, month, day] =
+        eventDate.split("-").map(Number);
+
+    const [hours, minutes] =
+        eventTime.split(":").map(Number);
+
+    // Fecha inicial aproximada en UTC
+    let utcDate = new Date(
+        Date.UTC(
+            year,
+            month - 1,
+            day,
+            hours,
+            minutes
+        )
+    );
+
+    // Ajustamos según la zona del evento
+    const offset =
+        getTimezoneOffset(
+            eventTimezone,
+            utcDate
+        );
+
+    utcDate = new Date(
+        utcDate.getTime() - offset
     );
 
     return new Intl.DateTimeFormat("es-ES", {
-        timeZone: timezone,
+        timeZone: viewerTimezone,
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false
-    }).format(date);
+        hour12: true
+    }).format(utcDate);
 }
 
     const eventDateTime =
