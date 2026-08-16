@@ -1116,31 +1116,6 @@ async function processDiscordCallback() {
         updateProfileDisplay();
 
         // ====================================
-        // GUARDAR VÍNCULO DISCORD
-        // ====================================
-
-        const { error: discordAccountError } = await supabaseClient
-            .from("discord_accounts")
-            .upsert(
-                {
-                    user_id: currentUser.id,
-                    discord_user_id: data.discord.id,
-                    discord_username: data.discord.username,
-                    discord_global_name: data.discord.global_name,
-                    avatar: data.discord.avatar
-                },
-                {
-                    onConflict: "discord_user_id"
-                }
-            );
-
-        if (discordAccountError) {
-            console.error("❌ Error guardando discord_accounts:", discordAccountError);
-        } else {
-            console.log("✅ Cuenta de Discord vinculada correctamente.");
-        }
-
-        // ====================================
         // CERRAR MODAL DE PRIMER ACCESO (si existe)
         // ====================================
 
