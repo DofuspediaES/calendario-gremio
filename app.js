@@ -137,7 +137,7 @@ async function loginAnonymous() {
 
 
 // ============================================
-// CARGAR PERFIL (MODIFICADO)
+// CARGAR PERFIL
 // ============================================
 
 async function loadProfile() {
@@ -149,10 +149,7 @@ async function loadProfile() {
     } = await supabaseClient
         .from("profiles")
         .select("*")
-        .eq(
-            "id",
-            currentUser.id
-        )
+        .eq("id", currentUser.id)
         .maybeSingle();
 
     if (error) {
@@ -168,7 +165,7 @@ async function loadProfile() {
     // ========================================
 
     if (!data) {
-        await showFirstLoginModal();
+        showFirstLoginModal();
         return;
     }
 
