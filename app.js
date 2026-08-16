@@ -1008,6 +1008,277 @@ if (changeNameButton) {
 }
 
 // ============================================
+// CREAR / EDITAR EVENTO DESDE LA WEB
+// ============================================
+
+if (eventForm) {
+
+    eventForm.addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        if (!currentUser) {
+            alert("No estás conectado.");
+            return;
+        }
+
+        const name =
+            document.getElementById("eventName").value.trim();
+
+        const type =
+            document.getElementById("eventType").value;
+
+        const date =
+            document.getElementById("eventDate").value;
+
+        const time =
+            document.getElementById("eventTime").value;
+
+        const capacity =
+            Number(
+                document.getElementById("eventCapacity").value
+            );
+
+        const description =
+            document.getElementById("eventDescription").value.trim();
+
+
+        // ========================================
+        // VALIDAR
+        // ========================================
+
+        if (
+            !name ||
+            !type ||
+            !date ||
+            !time ||
+            !capacity
+        ) {
+            alert("Completa todos los campos obligatorios.");
+            return;
+        }
+
+
+        const submitButton =
+            eventForm.querySelector(
+                'button[type="submit"]'
+            );
+
+
+        if (submitButton) {
+
+            submitButton.disabled = true;
+
+            submitButton.textContent =
+                editingEventId
+                    ? "Guardando..."
+                    : "Creando...";
+        }
+
+
+        try {
+
+            // ====================================
+            // EDITAR EVENTO
+            // ====================================
+
+            if (editingEventId) {
+
+                const {
+                    error
+                } = await supabaseClient
+
+                    .from("events")
+
+                    .update({
+
+                        name:
+                            name,
+
+                        type:
+                            type,
+
+                        event_date:
+                            date,
+
+                        event_time:
+                            time,
+
+                        capacity:
+                            capacity,
+
+                        description:
+                            description
+
+                    })
+
+                    .eq(
+                        "id",
+                        editingEventId
+                    );
+
+
+                if (error) {
+
+                    console.error(
+                        "❌ Error editando evento:",
+                        error
+                    );
+
+                    alert(
+                        "No se pudo editar el evento."
+                    );
+
+                    return;
+                }
+
+
+                alert(
+                    "✅ Evento actualizado correctamente."
+                );
+
+            }
+
+            // ====================================
+            // CREAR EVENTO
+            // ====================================
+
+            else {
+
+                const {
+                    data,
+                    error
+                } = await supabaseClient
+
+                    .from("events")
+
+                    .insert({
+
+                        user_id:
+                            currentUser.id,
+
+                        name:
+                            name,
+
+                        type:
+                            type,
+
+                        event_date:
+                            date,
+
+                        event_time:
+                            time,
+
+                        capacity:
+                            capacity,
+
+                        description:
+                            description
+
+                    })
+
+                    .select()
+                    .single();
+
+
+                if (error) {
+
+                    console.error(
+                        "❌ Error creando evento:",
+                        error
+                    );
+
+                    alert(
+                        "No se pudo crear el evento.\n\n" +
+                        error.message
+                    );
+
+                    return;
+                }
+
+
+                console.log(
+                    "✅ Evento creado:",
+                    data
+                );
+
+
+                alert(
+                    "✅ Actividad creada correctamente."
+                );
+            }
+
+
+            // ====================================
+            // CERRAR MODAL
+            // ====================================
+
+            editingEventId = null;
+
+            eventModal.classList.add(
+                "hidden"
+            );
+
+
+            // ====================================
+            // LIMPIAR FORMULARIO
+            // ====================================
+
+            eventForm.reset();
+
+
+            document.getElementById(
+                "eventCapacity"
+            ).value = 8;
+
+
+            const modalTitle =
+                eventModal.querySelector("h2");
+
+
+            if (modalTitle) {
+
+                modalTitle.textContent =
+                    "➕ Nueva Actividad";
+            }
+
+
+            // ====================================
+            // RECARGAR EVENTOS
+            // ====================================
+
+            await loadEvents();
+
+
+        } catch (error) {
+
+            console.error(
+                "❌ Error creando/editando evento:",
+                error
+            );
+
+            alert(
+                "Ocurrió un error inesperado."
+            );
+
+        } finally {
+
+            if (submitButton) {
+
+                submitButton.disabled =
+                    false;
+
+                submitButton.textContent =
+                    "Crear actividad";
+            }
+
+        }
+
+    });
+
+}
+
+// ============================================
 // BOTÓN DISCORD
 // ============================================
 
