@@ -402,19 +402,13 @@ async function loadEvents() {
 
 
 // ============================================
-// CARGAR PARTICIPANTES
+// CARGAR PARTICIPANTES (Versión directa)
 // ============================================
 
 async function loadParticipants() {
-    // Hacemos el join con profiles para traer el nombre de usuario
     const { data, error } = await supabaseClient
         .from("event_participants")
-        .select(`
-            *,
-            profiles (
-                player_name
-            )
-        `);
+        .select("*");
 
     if (error) {
         console.error("Error cargando participantes:", error);
@@ -424,7 +418,6 @@ async function loadParticipants() {
     participants = data || [];
     console.log("👥 Participantes cargados:", participants.length);
 }
-
 
 // ============================================
 // FORMATOS Y FUNCIONES AUXILIARES
