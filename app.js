@@ -325,8 +325,26 @@ async function enableNotifications() {
 // ============================================
 
 async function loadEvents() {
-    console.time("⏱️ loadEvents"); // ⬅️ INICIO
+    console.time("⏱️ loadEvents");
 
+    // 1. CARGAR DESDE CACHÉ (instantáneo)
+    const cached = localStorage.getItem("events");
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                events = parsed;
+                console.log("📦 Cargado desde caché:", events.length, "eventos");
+                await loadParticipants();
+                renderCalendar();
+                renderEvents();
+            }
+        } catch (e) {
+            console.warn("Caché corrupto, ignorando...");
+        }
+    }
+
+    // 2. CARGAR DESDE SUPABASE (actualiza en segundo plano)
     const { data, error } = await supabaseClient
         .from("events")
         .select("*")
@@ -338,12 +356,17 @@ async function loadEvents() {
         return;
     }
 
+    // 3. ACTUALIZAR VARIABLES Y GUARDAR CACHÉ
     events = data || [];
     await loadParticipants();
     renderCalendar();
     renderEvents();
 
-    console.timeEnd("⏱️ loadEvents"); // ⬅️ FIN
+    // Guardar en localStorage para la próxima vez
+    localStorage.setItem("events", JSON.stringify(events));
+    console.log("💾 Caché guardado:", events.length, "eventos");
+
+    console.timeEnd("⏱️ loadEvents");
 }
 
 
