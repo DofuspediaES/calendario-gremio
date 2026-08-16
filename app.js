@@ -26,7 +26,7 @@ const supabaseClient = window.supabase.createClient(
 // COMPROBAR SESIÓN AL CARGAR LA PÁGINA (PON ESTO AQUÍ)
 // ============================================
 
-const btnConectarDiscord = document.getElementById("btn-conectar"); // Asegúrate de que este sea el ID de tu botón
+const btnConectarDiscord = document.getElementById("discordButton"); // Asegúrate de que este sea el ID de tu botón
 
 supabaseClient.auth.getSession().then(({ data: { session } }) => {
     if (session) {
