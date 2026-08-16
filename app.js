@@ -64,6 +64,7 @@ const addEventButton = document.getElementById("addEventButton");
 const eventModal = document.getElementById("eventModal");
 const closeModal = document.getElementById("closeModal");
 const eventForm = document.getElementById("eventForm");
+console.log("🧪 eventForm encontrado:", eventForm);
 const notificationButton = document.getElementById("notificationButton");
 const changeNameButton = document.getElementById("changeNameButton");
 
