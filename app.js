@@ -1037,6 +1037,57 @@ if (changeNameButton) {
 }
 
 // ============================================
+// ABRIR MODAL CREAR ACTIVIDAD
+// ============================================
+
+if (addEventButton) {
+
+    addEventButton.addEventListener("click", () => {
+
+        console.log("🟢 Abriendo formulario de nueva actividad.");
+
+        editingEventId = null;
+
+        eventForm.reset();
+
+        document.getElementById("eventCapacity").value = 8;
+
+        const modalTitle = eventModal.querySelector("h2");
+
+        if (modalTitle) {
+            modalTitle.textContent = "➕ Crear actividad";
+        }
+
+        eventModal.classList.remove("hidden");
+
+    });
+
+}
+
+
+// ============================================
+// CERRAR MODAL
+// ============================================
+
+if (closeModal) {
+
+    closeModal.addEventListener("click", () => {
+
+        console.log("🔴 Cerrando formulario.");
+
+        editingEventId = null;
+
+        eventModal.classList.add("hidden");
+
+        eventForm.reset();
+
+        document.getElementById("eventCapacity").value = 8;
+
+    });
+
+}
+
+// ============================================
 // CREAR / EDITAR EVENTO DESDE LA WEB
 // ============================================
 
