@@ -325,6 +325,8 @@ async function enableNotifications() {
 // ============================================
 
 async function loadEvents() {
+    console.time("⏱️ loadEvents"); // ⬅️ INICIO
+
     const { data, error } = await supabaseClient
         .from("events")
         .select("*")
@@ -338,9 +340,10 @@ async function loadEvents() {
 
     events = data || [];
     await loadParticipants();
-
     renderCalendar();
     renderEvents();
+
+    console.timeEnd("⏱️ loadEvents"); // ⬅️ FIN
 }
 
 
