@@ -1017,6 +1017,9 @@ if (changeNameButton) {
 if (eventForm) {
 
     console.log("🟢 Registrando listener del formulario...");
+    eventForm.addEventListener("click", (e) => {
+    console.log("🖱️ CLICK:", e.target);
+});
 
     eventForm.addEventListener("submit", async (e) => {
 
