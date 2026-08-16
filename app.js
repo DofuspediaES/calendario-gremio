@@ -1082,41 +1082,41 @@ async function processDiscordCallback() {
         console.log("Discord conectado:", data.discord);
 
         // ====================================
-        // GUARDAR DISCORD EN PERFIL
+        // CREAR / ACTUALIZAR PERFIL CON UPSERT
         // ====================================
 
-        let profileError = null;
+        const discordPlayerName =
+            data.discord.global_name ||
+            data.discord.username ||
+            "Jugador";
 
-        // ========================================
-        // ¿ES PRIMER ACCESO?
-        // ========================================
-
-        const isFirstDiscordLogin = sessionStorage.getItem("discord_first_login") === "true";
-
-        if (isFirstDiscordLogin) {
-            const suggestedName = data.discord.global_name || data.discord.username || "Jugador";
-
-            const { error } = await supabaseClient
-                .from("profiles")
-                .insert({
+        const {
+            data: profileData,
+            error: profileError
+        } = await supabaseClient
+            .from("profiles")
+            .upsert(
+                {
                     id: currentUser.id,
-                    player_name: suggestedName,
+                    player_name: discordPlayerName,
                     discord_id: data.discord.id,
-                    discord_username: data.discord.global_name || data.discord.username
-                });
+                    discord_username: discordPlayerName
+                },
+                {
+                    onConflict: "id"
+                }
+            )
+            .select()
+            .single();
 
-            profileError = error;
-        } else {
-            const { error } = await supabaseClient
-                .from("profiles")
-                .update({
-                    discord_id: data.discord.id,
-                    discord_username: data.discord.global_name || data.discord.username
-                })
-                .eq("id", currentUser.id);
-
-            profileError = error;
+        if (profileError) {
+            console.error("❌ Error creando/actualizando perfil:", profileError);
+            alert("Discord se conectó, pero no se pudo crear tu perfil.");
+            return;
         }
+
+        currentProfile = profileData;
+        updateProfileDisplay();
 
         // ====================================
         // GUARDAR VÍNCULO DISCORD
@@ -1143,24 +1143,23 @@ async function processDiscordCallback() {
             console.log("✅ Cuenta de Discord vinculada correctamente.");
         }
 
-        // ========================================
-        // CARGAR PERFIL CREADO POR DISCORD
-        // ========================================
+        // ====================================
+        // CERRAR MODAL DE PRIMER ACCESO (si existe)
+        // ====================================
 
-        if (isFirstDiscordLogin && !profileError) {
-            const { data: profileData, error: profileLoadError } = await supabaseClient
-                .from("profiles")
-                .select("*")
-                .eq("id", currentUser.id)
-                .single();
+        const firstLoginModal = document.querySelector(
+            "div[style*='position:fixed'][style*='z-index:99999']"
+        );
 
-            if (!profileLoadError) {
-                currentProfile = profileData;
-                updateProfileDisplay();
-            }
-
-            sessionStorage.removeItem("discord_first_login");
+        if (firstLoginModal) {
+            firstLoginModal.remove();
         }
+
+        // ====================================
+        // LIMPIAR MARCA DE PRIMER ACCESO
+        // ====================================
+
+        sessionStorage.removeItem("discord_first_login");
 
         // ====================================
         // ACTUALIZAR BOTÓN
@@ -1184,328 +1183,3 @@ async function processDiscordCallback() {
         alert("Ocurrió un error al conectar Discord.");
     }
 }
-
-
-// ============================================
-// CLICK EN BOTÓN
-// ============================================
-
-if (discordButton) {
-    discordButton.addEventListener(
-        "click",
-        connectDiscord
-    );
-}
-
-if (notificationButton) {
-    notificationButton.addEventListener(
-        "click",
-        enableNotifications
-    );
-}
-
-if (previousMonthButton) {
-    previousMonthButton.addEventListener(
-        "click",
-        () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar();
-        }
-    );
-}
-
-if (nextMonthButton) {
-    nextMonthButton.addEventListener(
-        "click",
-        () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar();
-        }
-    );
-}
-
-if (todayButton) {
-    todayButton.addEventListener(
-        "click",
-        () => {
-            currentDate = new Date();
-            renderCalendar();
-        }
-    );
-}
-
-if (addEventButton) {
-    addEventButton.addEventListener(
-        "click",
-        () => {
-            editingEventId = null;
-            eventForm.reset();
-
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Obtener la fecha de hoy en formato AAAA-MM-DD
-            const todayStr = new Date().toISOString().split('T')[0];
-            const eventDateInput = document.getElementById('eventDate');
-            
-            if (eventDateInput) {
-                // Bloquea los días pasados en el calendario visual
-                eventDateInput.min = todayStr;
-                // Asigna por defecto la fecha de hoy
-                eventDateInput.value = todayStr;
-            }
-            // --- FIN DE LA MODIFICACIÓN ---
-
-            const modalTitle = eventModal.querySelector("h2");
-            if (modalTitle) modalTitle.textContent = "➕ Crear Evento";
-
-            eventModal.classList.remove("hidden");
-        }
-    );
-}
-
-if (closeModal) {
-    closeModal.addEventListener(
-        "click",
-        () => {
-            eventModal.classList.add("hidden");
-        }
-    );
-}
-
-if (eventModal) {
-    eventModal.addEventListener(
-        "click",
-        event => {
-            if (event.target === eventModal) {
-                eventModal.classList.add("hidden");
-            }
-        }
-    );
-}
-
-if (eventForm) {
-    eventForm.addEventListener(
-        "submit",
-        async event => {
-            event.preventDefault();
-
-            // ========================================
-            // COMPROBAR USUARIO
-            // ========================================
-
-            if (!currentUser) {
-                alert("Todavía no estás conectado.");
-                return;
-            }
-
-            // ========================================
-            // OBTENER DATOS
-            // ========================================
-
-            const name = document.getElementById("eventName").value;
-            const type = document.getElementById("eventType").value;
-            const date = document.getElementById("eventDate").value;
-            const time = document.getElementById("eventTime").value;
-            const capacity = Number(document.getElementById("eventCapacity").value);
-            const description = document.getElementById("eventDescription").value;
-
-            // ========================================
-            // VALIDAR FECHA Y HORA
-            // ========================================
-
-            const selectedDateTime = new Date(`${date}T${time}`);
-            const currentDateTime = new Date();
-
-            if (selectedDateTime < currentDateTime) {
-                alert("⚠️ No puedes programar una actividad en una fecha u hora que ya ha pasado.");
-                return;
-            }
-
-            // ========================================
-            // DATOS DEL EVENTO
-            // ========================================
-
-            const eventData = {
-                user_id: currentUser.id,
-                name: name,
-                type: type,
-                event_date: date,
-                event_time: time,
-                timezone: getTimezone(),
-                capacity: capacity,
-                description: description
-            };
-
-            // ========================================
-            // VARIABLE DE RESULTADO
-            // ========================================
-
-            let savedEvent = null;
-            let error = null;
-
-            // ============================================
-            // EDITAR EVENTO
-            // ============================================
-
-            if (editingEventId) {
-                const res = await supabaseClient
-                    .from("events")
-                    .update(eventData)
-                    .eq("id", editingEventId)
-                    .select()
-                    .single();
-
-                error = res.error;
-                savedEvent = res.data;
-            }
-
-            // ============================================
-            // CREAR EVENTO
-            // ============================================
-
-            else {
-                const res = await supabaseClient
-                    .from("events")
-                    .insert(eventData)
-                    .select()
-                    .single();
-
-                error = res.error;
-                savedEvent = res.data;
-            }
-
-            // ========================================
-            // ERROR SUPABASE
-            // ========================================
-
-            if (error) {
-                console.error("Error guardando evento:", error);
-                alert("No se pudo guardar el evento.");
-                return;
-            }
-
-            // ============================================
-            // PUBLICAR EN DISCORD
-            // ============================================
-
-            if (savedEvent && !editingEventId) {
-                try {
-                    const { data: discordData, error: discordError } = await supabaseClient
-                        .functions
-                        .invoke(
-                            "discord-event",
-                            { body: savedEvent }
-                        );
-
-                    if (discordError) {
-                        console.error("Error enviando a Discord:", discordError);
-                        alert("⚠️ La actividad se creó, pero no pudo publicarse en Discord.");
-                    } else if (discordData && discordData.success) {
-                        // ==================================
-                        // GUARDAR ID DEL MENSAJE DISCORD
-                        // ==================================
-
-                        await supabaseClient
-                            .from("events")
-                            .update({
-                                discord_message_id: discordData.message_id,
-                                discord_channel_id: discordData.channel_id
-                            })
-                            .eq("id", savedEvent.id);
-
-                        console.log("✅ Actividad publicada en Discord.");
-                    }
-                } catch (discordError) {
-                    console.error("Error Discord:", discordError);
-                }
-            }
-
-            // ========================================
-            // LIMPIAR
-            // ========================================
-
-            editingEventId = null;
-            eventForm.reset();
-            eventModal.classList.add("hidden");
-
-            // ========================================
-            // RECARGAR EVENTOS
-            // ========================================
-
-            await loadEvents();
-        }
-    );
-}
-
-// Pestañas de Vista (Próximos / Mis Eventos / Histórico)
-document.querySelectorAll(".filter-tab").forEach(tab => {
-    tab.addEventListener("click", event => {
-        document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
-        event.target.classList.add("active");
-
-        currentViewFilter = event.target.dataset.view;
-        renderEvents();
-    });
-});
-
-// Selector de Categoría (Raids, Mazmorras, etc.)
-const categoryFilterSelect = document.getElementById("categoryFilterSelect");
-if (categoryFilterSelect) {
-    categoryFilterSelect.addEventListener("change", event => {
-        currentCategoryFilter = event.target.value;
-        renderEvents();
-    });
-}
-
-
-// ============================================
-// REGISTRO DE SERVICE WORKER
-// ============================================
-
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-        .register("sw.js")
-        .then(registration => {
-            console.log("Service Worker registrado con éxito:", registration.scope);
-        })
-        .catch(error => {
-            console.error("Error registrando Service Worker:", error);
-        });
-}
-
-
-// ============================================
-// INICIALIZACIÓN DE LA APLICACIÓN
-// ============================================
-
-async function startApp() {
-    showTimezone();
-
-    const connected = await loginAnonymous();
-    if (!connected) {
-        return;
-    }
-
-    await loadProfile();
-
-    // ========================================
-    // PROCESAR DISCORD
-    // ========================================
-
-    await processDiscordCallback();
-
-    // ========================================
-    // CARGAR EVENTOS
-    // ========================================
-
-    await loadEvents();
-    localStorage.setItem("events", JSON.stringify(events));
-}
-
-
-// ============================================
-// EJECUCIÓN AL CARGAR LA PÁGINA
-// ============================================
-
-window.addEventListener("DOMContentLoaded", () => {
-    startApp();
-});
