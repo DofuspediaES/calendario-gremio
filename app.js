@@ -406,9 +406,15 @@ async function loadEvents() {
 // ============================================
 
 async function loadParticipants() {
+    // Hacemos el join con profiles para traer el nombre de usuario
     const { data, error } = await supabaseClient
         .from("event_participants")
-        .select("*");
+        .select(`
+            *,
+            profiles (
+                username
+            )
+        `);
 
     if (error) {
         console.error("Error cargando participantes:", error);
@@ -416,6 +422,7 @@ async function loadParticipants() {
     }
 
     participants = data || [];
+    console.log("👥 Participantes cargados:", participants.length);
 }
 
 
