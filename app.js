@@ -1012,21 +1012,39 @@ if (changeNameButton) {
 // ============================================
 
 if (eventForm) {
+
     eventForm.addEventListener("submit", async (e) => {
+
         e.preventDefault();
+
+        console.log("🟢 Formulario de evento enviado.");
 
         if (!currentUser) {
             alert("No estás conectado.");
             return;
         }
 
-        const name = document.getElementById("eventName").value.trim();
-        const type = document.getElementById("eventType").value;
-        const date = document.getElementById("eventDate").value;
-        const time = document.getElementById("eventTime").value;
+        const name = document
+            .getElementById("eventName")
+            .value
+            .trim();
+
+        const type = document
+            .getElementById("eventType")
+            .value;
+
+        const date = document
+            .getElementById("eventDate")
+            .value;
+
+        const time = document
+            .getElementById("eventTime")
+            .value;
+
         const capacity = Number(
             document.getElementById("eventCapacity").value
         );
+
         const description = document
             .getElementById("eventDescription")
             .value
@@ -1048,7 +1066,7 @@ if (eventForm) {
         try {
 
             // ========================================
-            // EDITAR EVENTO EXISTENTE
+            // EDITAR EVENTO
             // ========================================
 
             if (editingEventId) {
@@ -1068,7 +1086,7 @@ if (eventForm) {
 
                 if (error) {
                     console.error(
-                        "Error editando evento:",
+                        "❌ Error editando evento:",
                         error
                     );
 
@@ -1079,7 +1097,11 @@ if (eventForm) {
                     return;
                 }
 
-                alert("✅ Actividad actualizada correctamente.");
+                console.log("✅ Evento actualizado.");
+
+                alert(
+                    "✅ Actividad actualizada correctamente."
+                );
 
             }
 
@@ -1089,24 +1111,27 @@ if (eventForm) {
 
             else {
 
-                const { data, error } =
-                    await supabaseClient
-                        .from("events")
-                        .insert({
-                            user_id: currentUser.id,
-                            name: name,
-                            type: type,
-                            event_date: date,
-                            event_time: time,
-                            capacity: capacity,
-                            description: description
-                        })
-                        .select()
-                        .single();
+                const {
+                    data,
+                    error
+                } = await supabaseClient
+                    .from("events")
+                    .insert({
+                        user_id: currentUser.id,
+                        name: name,
+                        type: type,
+                        event_date: date,
+                        event_time: time,
+                        capacity: capacity,
+                        description: description
+                    })
+                    .select()
+                    .single();
 
                 if (error) {
+
                     console.error(
-                        "Error creando evento:",
+                        "❌ Error creando evento:",
                         error
                     );
 
@@ -1127,29 +1152,35 @@ if (eventForm) {
                 );
 
                 // ====================================
-                // AVISAR A LA FUNCIÓN DE DISCORD
+                // AVISAR A DISCORD
                 // ====================================
 
                 try {
 
-                    const { data: discordData, error: discordError } =
-                        await supabaseClient.functions.invoke(
-                            "discord-event",
-                            {
-                                body: data
-                            }
-                        );
+                    const {
+                        data: discordData,
+                        error: discordError
+                    } = await supabaseClient.functions.invoke(
+                        "discord-event",
+                        {
+                            body: data
+                        }
+                    );
 
                     if (discordError) {
+
                         console.error(
                             "⚠️ Error publicando en Discord:",
                             discordError
                         );
+
                     } else {
+
                         console.log(
                             "📢 Discord respondió:",
                             discordData
                         );
+
                     }
 
                 } catch (discordError) {
@@ -1174,8 +1205,21 @@ if (eventForm) {
 
             eventForm.reset();
 
-            // Restaurar valores
-            document.getElementById("eventCapacity").value = 8;
+            document.getElementById(
+                "eventCapacity"
+            ).value = 8;
+
+            const modalTitle =
+                eventModal?.querySelector("h2");
+
+            if (modalTitle) {
+                modalTitle.textContent =
+                    "➕ Nueva Actividad";
+            }
+
+            // ========================================
+            // RECARGAR EVENTOS
+            // ========================================
 
             await loadEvents();
 
@@ -1187,82 +1231,13 @@ if (eventForm) {
             );
 
             alert(
-                "Ocurrió un error al procesar la actividad."
-            );
-
-        } finally {
-
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.textContent =
-                    "Crear actividad";
-            }
-
-        }
-
-    });
-}
-
-
-            // ====================================
-            // CERRAR MODAL
-            // ====================================
-
-            editingEventId = null;
-
-            eventModal.classList.add(
-                "hidden"
-            );
-
-
-            // ====================================
-            // LIMPIAR FORMULARIO
-            // ====================================
-
-            eventForm.reset();
-
-
-            document.getElementById(
-                "eventCapacity"
-            ).value = 8;
-
-
-            const modalTitle =
-                eventModal.querySelector("h2");
-
-
-            if (modalTitle) {
-
-                modalTitle.textContent =
-                    "➕ Nueva Actividad";
-            }
-
-
-            // ====================================
-            // RECARGAR EVENTOS
-            // ====================================
-
-            await loadEvents();
-
-
-        } catch (error) {
-
-            console.error(
-                "❌ Error creando/editando evento:",
-                error
-            );
-
-            alert(
                 "Ocurrió un error inesperado."
             );
 
         } finally {
 
             if (submitButton) {
-
-                submitButton.disabled =
-                    false;
-
+                submitButton.disabled = false;
                 submitButton.textContent =
                     "Crear actividad";
             }
