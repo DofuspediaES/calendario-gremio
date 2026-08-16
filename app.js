@@ -412,7 +412,7 @@ async function loadParticipants() {
         .select(`
             *,
             profiles (
-                username
+                player_name
             )
         `);
 
