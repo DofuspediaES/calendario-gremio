@@ -645,12 +645,7 @@ async function loadEvents() {
     // 2. CARGAR DESDE SUPABASE (actualiza en segundo plano)
     const { data, error } = await supabaseClient
         .from("events")
-        .select(`
-    *,
-    profiles:profiles!events_user_id_fkey (
-        player_name
-    )
-`)
+        .select("*")
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true });
 
@@ -660,10 +655,62 @@ async function loadEvents() {
     }
 
     // 3. ACTUALIZAR VARIABLES Y GUARDAR CACHÉ
-    events = data || [];
-    await loadParticipants();
-    renderCalendar();
-    renderEvents();
+  events = data || [];
+
+// ============================================
+// CARGAR NOMBRES DE LOS CREADORES
+// ============================================
+
+const creatorIds = [
+    ...new Set(
+        events
+            .map(event => event.user_id)
+            .filter(Boolean)
+    )
+];
+
+if (creatorIds.length > 0) {
+
+    const {
+        data: profiles,
+        error: profilesError
+    } = await supabaseClient
+        .from("profiles")
+        .select("id, player_name")
+        .in("id", creatorIds);
+
+    if (profilesError) {
+
+        console.error(
+            "Error cargando creadores:",
+            profilesError
+        );
+
+    } else {
+
+        const profilesMap = {};
+
+        profiles.forEach(profile => {
+
+            profilesMap[profile.id] =
+                profile.player_name;
+
+        });
+
+        events.forEach(event => {
+
+            event.creator_name =
+                profilesMap[event.user_id] ||
+                "Usuario";
+
+        });
+
+    }
+}
+
+await loadParticipants();
+renderCalendar();
+renderEvents();
 
     // Guardar en localStorage para la próxima vez
     localStorage.setItem("events", JSON.stringify(events));
