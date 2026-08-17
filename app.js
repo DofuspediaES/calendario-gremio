@@ -645,7 +645,12 @@ async function loadEvents() {
     // 2. CARGAR DESDE SUPABASE (actualiza en segundo plano)
     const { data, error } = await supabaseClient
         .from("events")
-        .select("*")
+        .select(`
+    *,
+    profiles:profiles!events_user_id_fkey (
+        player_name
+    )
+`)
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true });
 
@@ -1139,49 +1144,100 @@ function renderEvents() {
             `;
         }
 
-        const typeLabel = EVENT_TYPE_NAMES[eventType] || eventType;
+                const typeLabel =
+            EVENT_TYPE_NAMES[eventType] ||
+            eventType;
+
+        const creatorName =
+            event.profiles?.player_name ||
+            "Usuario";
 
         card.innerHTML = `
             <div class="event-card-header">
+
                 <div>
+
                     <span class="event-type-badge ${eventType}">
-                        ${getEventIcon(event.type)} ${typeLabel}
+                        ${getEventIcon(event.type)}
+                        ${typeLabel}
                     </span>
+
                     <h3>
                         ${escapeHTML(event.name)}
                     </h3>
+
                     <div class="event-info">
-                        📅 ${formatDate(new Date(`${event.event_date}T12:00:00`))} &nbsp;&nbsp;
-                        🕐 ${formatTime(
-    event.event_time,
-    event.event_date,
-    event.timezone
-)}
+
+                        📅 ${
+                            formatDate(
+                                new Date(
+                                    `${event.event_date}T12:00:00`
+                                )
+                            )
+                        }
+
+                        &nbsp;&nbsp;
+
+                        🕐 ${
+                            formatTime(
+                                event.event_time,
+                                event.event_date,
+                                event.timezone
+                            )
+                        }
+
                     </div>
+
                 </div>
+
                 <div class="capacity">
                     👥 ${count}/${event.capacity}
                 </div>
+
             </div>
+
 
             <div class="event-info">
-                ${escapeHTML(event.description || "")}
+                ${escapeHTML(
+                    event.description || ""
+                )}
             </div>
+
+
+            <div class="event-info" style="margin-top: 6px;">
+                👑 Creado por:
+                <strong>
+                    ${escapeHTML(creatorName)}
+                </strong>
+            </div>
+
 
             <div class="participants-box">
-                <strong>👥 Participantes</strong>
+
+                <strong>
+                    👥 Participantes
+                </strong>
+
                 <div class="participants-list">
+
                     ${participantHTML}
+
                 </div>
+
             </div>
 
+
             <div class="event-actions">
+
                 ${buttonHTML}
+
                 ${creatorButtonsHTML}
+
             </div>
         `;
 
         eventsList.appendChild(card);
+
     });
 }
 
