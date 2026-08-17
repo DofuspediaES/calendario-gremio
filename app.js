@@ -1196,8 +1196,8 @@ function renderEvents() {
             eventType;
 
         const creatorName =
-            event.profiles?.player_name ||
-            "Usuario";
+    event.creator_name ||
+    "Usuario";
 
         card.innerHTML = `
             <div class="event-card-header">
