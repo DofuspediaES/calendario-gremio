@@ -754,24 +754,31 @@ function formatDate(date) {
 // CONVERSIÓN DE HORA SEGÚN ZONA HORARIA
 // ============================================
 
+// Obtener diferencia UTC de una zona horaria
 function getTimezoneOffset(date, timezone) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23"
-    }).formatToParts(date);
+
+    const parts = new Intl.DateTimeFormat(
+        "en-US",
+        {
+            timeZone: timezone,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23"
+        }
+    ).formatToParts(date);
 
     const values = {};
 
     parts.forEach(part => {
+
         if (part.type !== "literal") {
             values[part.type] = Number(part.value);
         }
+
     });
 
     const asUTC = Date.UTC(
@@ -787,21 +794,27 @@ function getTimezoneOffset(date, timezone) {
 }
 
 
-// Convierte una fecha/hora local de una zona
-// en un objeto Date que representa el instante real.
-function eventDateTimeToDate(eventDate, eventTime, timezone) {
+// ============================================
+// CONVERTIR FECHA/HORA DEL EVENTO A UTC
+// ============================================
 
-    if (!eventDate) return null;
+function eventDateTimeToDate(
+    eventDate,
+    eventTime,
+    timezone
+) {
 
-    const time = eventTime || "23:59";
+    if (!eventDate || !eventTime) {
+        return null;
+    }
 
     const [year, month, day] =
         eventDate.split("-").map(Number);
 
     const [hours, minutes] =
-        time.split(":").map(Number);
+        eventTime.split(":").map(Number);
 
-    // Fecha aproximada en UTC
+    // Fecha aproximada
     const approximateUTC = new Date(
         Date.UTC(
             year,
@@ -813,12 +826,13 @@ function eventDateTimeToDate(eventDate, eventTime, timezone) {
         )
     );
 
-    // Ajustamos según la zona horaria del evento
+    // Diferencia real de la zona del evento
     const offset = getTimezoneOffset(
         approximateUTC,
-        timezone || "America/Bogota"
+        timezone || "America/Lima"
     );
 
+    // Obtener instante UTC real
     return new Date(
         approximateUTC.getTime() - offset
     );
@@ -826,7 +840,7 @@ function eventDateTimeToDate(eventDate, eventTime, timezone) {
 
 
 // ============================================
-// CONVERTIR HORA DEL EVENTO A LA ZONA DEL USUARIO
+// MOSTRAR HORA EN LA ZONA DEL USUARIO
 // ============================================
 
 function formatTime(
@@ -839,8 +853,8 @@ function formatTime(
         return "Sin hora";
     }
 
-    // Si no hay fecha o zona, mostrar la hora directamente
-    if (!eventDate || !eventTimezone) {
+    // Si no tenemos fecha, mostrar la hora directamente
+    if (!eventDate) {
 
         const [hours, minutes] =
             time.split(":").map(Number);
@@ -864,215 +878,13 @@ function formatTime(
         );
     }
 
-
-    // ========================================
-    // ZONA HORARIA DEL VISITANTE
-    // ========================================
-
+    // Zona horaria del visitante
     const viewerTimezone =
         Intl.DateTimeFormat()
             .resolvedOptions()
             .timeZone;
 
-
-    // ========================================
-    // CREAR FECHA INTERPRETANDO
-    // LA HORA EN LA ZONA DEL EVENTO
-    // ========================================
-
-    const [year, month, day] =
-        eventDate.split("-").map(Number);
-
-    const [hours, minutes] =
-        time.split(":").map(Number);
-
-
-    // Fecha inicial
-    let utcDate =
-        new Date(
-            Date.UTC(
-                year,
-                month - 1,
-                day,
-                hours,
-                minutes,
-                0
-            )
-        );
-
-
-    // Obtener offset real de la zona del evento
-    // teniendo en cuenta horario de verano
-    const parts =
-        new Intl.DateTimeFormat(
-            "en-US",
-            {
-                timeZone:
-                    eventTimezone,
-
-                year:
-                    "numeric",
-
-                month:
-                    "2-digit",
-
-                day:
-                    "2-digit",
-
-                hour:
-                    "2-digit",
-
-                minute:
-                    "2-digit",
-
-                second:
-                    "2-digit",
-
-                hourCycle:
-                    "h23"
-            }
-        ).formatToParts(
-            utcDate
-        );
-
-
-    const values = {};
-
-    parts.forEach(
-        part => {
-
-            if (
-                part.type !==
-                "literal"
-            ) {
-
-                values[part.type] =
-                    Number(
-                        part.value
-                    );
-            }
-
-        }
-    );
-
-
-    const timezoneAsUTC =
-        Date.UTC(
-            values.year,
-            values.month - 1,
-            values.day,
-            values.hour,
-            values.minute,
-            values.second
-        );
-
-
-    const offset =
-        timezoneAsUTC -
-        utcDate.getTime();
-
-
-    // Convertir a UTC real
-    utcDate =
-        new Date(
-            utcDate.getTime() -
-            offset
-        );
-
-
-    // ========================================
-    // MOSTRAR EN LA ZONA DEL VISITANTE
-    // ========================================
-
-    return new Intl.DateTimeFormat(
-        "es-ES",
-        {
-            timeZone:
-                viewerTimezone,
-
-            hour:
-                "2-digit",
-
-            minute:
-                "2-digit",
-
-            hour12:
-                true
-        }
-    ).format(
-        utcDate
-    );
-}
-
-    // Obtener la diferencia UTC de una zona horaria
-    function getTimezoneOffset(timeZone, date) {
-        const parts = new Intl.DateTimeFormat("en-US", {
-            timeZone,
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hourCycle: "h23"
-        }).formatToParts(date);
-
-        const values = {};
-
-        parts.forEach(part => {
-            if (part.type !== "literal") {
-                values[part.type] = Number(part.value);
-            }
-        });
-
-        const asUTC = Date.UTC(
-            values.year,
-            values.month - 1,
-            values.day,
-            values.hour,
-            values.minute,
-            values.second
-        );
-
-        return asUTC - date.getTime();
-    }
-
-    const [year, month, day] =
-        eventDate.split("-").map(Number);
-
-    const [hours, minutes] =
-        eventTime.split(":").map(Number);
-
-    // Fecha inicial aproximada en UTC
-    let utcDate = new Date(
-        Date.UTC(
-            year,
-            month - 1,
-            day,
-            hours,
-            minutes
-        )
-    );
-
-    // Ajustamos según la zona del evento
-    const offset =
-        getTimezoneOffset(
-            eventTimezone,
-            utcDate
-        );
-
-    utcDate = new Date(
-        utcDate.getTime() - offset
-    );
-
-    return new Intl.DateTimeFormat("es-ES", {
-        timeZone: viewerTimezone,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
-    }).format(utcDate);
-}
-
+    // Convertir evento a instante real
     const eventDateTime =
         eventDateTimeToDate(
             eventDate,
@@ -1084,22 +896,97 @@ function formatTime(
         return "Sin hora";
     }
 
-    // Zona horaria del visitante
-    const userTimezone =
-        Intl.DateTimeFormat()
-            .resolvedOptions()
-            .timeZone;
-
-    return eventDateTime.toLocaleTimeString(
+    // Mostrar según la zona del visitante
+    return new Intl.DateTimeFormat(
         "es-ES",
         {
-            timeZone: userTimezone,
+            timeZone: viewerTimezone,
             hour: "2-digit",
-            minute: "2-digit"
+            minute: "2-digit",
+            hour12: true
+        }
+    ).format(eventDateTime);
+}
+
+
+// ============================================
+// MOSTRAR HORA ORIGINAL DEL CREADOR
+// ============================================
+
+function formatTimeOriginal(time) {
+
+    if (!time) {
+        return "Sin hora";
+    }
+
+    const [hours, minutes] =
+        time.split(":").map(Number);
+
+    const date = new Date();
+
+    date.setHours(
+        hours,
+        minutes,
+        0,
+        0
+    );
+
+    return date.toLocaleTimeString(
+        "es-ES",
+        {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
         }
     );
 }
 
+
+// ============================================
+// NOMBRE DE LA ZONA HORARIA
+// ============================================
+
+function formatTimezoneName(timezone) {
+
+    const names = {
+
+        "America/Lima":
+            "🇵🇪 Lima",
+
+        "America/Bogota":
+            "🇨🇴 Bogotá",
+
+        "America/Mexico_City":
+            "🇲🇽 Ciudad de México",
+
+        "America/Santiago":
+            "🇨🇱 Santiago",
+
+        "America/Argentina/Buenos_Aires":
+            "🇦🇷 Buenos Aires",
+
+        "America/Sao_Paulo":
+            "🇧🇷 São Paulo",
+
+        "America/New_York":
+            "🇺🇸 Nueva York",
+
+        "America/Los_Angeles":
+            "🇺🇸 Los Ángeles",
+
+        "Europe/Madrid":
+            "🇪🇸 Madrid",
+
+        "Europe/Paris":
+            "🇫🇷 París",
+
+        "Europe/London":
+            "🇬🇧 Londres"
+
+    };
+
+    return names[timezone] || timezone || "Zona horaria desconocida";
+}
 
 // ============================================
 // EMOJIS / ÍCONOS DE ACTIVIDAD
