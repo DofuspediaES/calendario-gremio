@@ -625,177 +625,357 @@ async function enableNotifications() {
 async function loadEvents() {
     console.time("⏱️ loadEvents");
 
-    // 1. CARGAR DESDE CACHÉ (instantáneo)
+    // 1. CARGAR DESDE CACHÉ
     const cached = localStorage.getItem("events");
+
     if (cached) {
+
         try {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+
+            const parsed =
+                JSON.parse(cached);
+
+            if (
+                Array.isArray(parsed) &&
+                parsed.length > 0
+            ) {
+
                 events = parsed;
-                console.log("📦 Cargado desde caché:", events.length, "eventos");
+
+                console.log(
+                    "📦 Cargado desde caché:",
+                    events.length,
+                    "eventos"
+                );
+
                 await loadParticipants();
+
                 renderCalendar();
                 renderEvents();
+
             }
+
         } catch (e) {
-            console.warn("Caché corrupto, ignorando...");
+
+            console.warn(
+                "Caché corrupto, ignorando..."
+            );
+
         }
+
     }
 
-    // 2. CARGAR DESDE SUPABASE (actualiza en segundo plano)
-    const { data, error } = await supabaseClient
-        .from("events")
-        .select("*")
-        .order("event_date", { ascending: true })
-        .order("event_time", { ascending: true });
 
-    if (error) {
-        console.error("Error cargando eventos:", error);
-        return;
-    }
-
-    // 3. ACTUALIZAR VARIABLES Y GUARDAR CACHÉ
-  events = data || [];
-
-// ============================================
-// CARGAR NOMBRES DE LOS CREADORES
-// ============================================
-
-const creatorIds = [
-    ...new Set(
-        events
-            .map(event => event.user_id)
-            .filter(Boolean)
-    )
-];
-
-if (creatorIds.length > 0) {
-
+    // 2. CARGAR DESDE SUPABASE
     const {
-        data: profiles,
-        error: profilesError
+        data,
+        error
     } = await supabaseClient
-        .from("profiles")
-        .select("id, player_name")
-        .in("id", creatorIds);
 
-    if (profilesError) {
+        .from("events")
 
-        console.error(
-            "Error cargando creadores:",
-            profilesError
+        .select("*")
+
+        .order(
+            "event_date",
+            {
+                ascending: true
+            }
+        )
+
+        .order(
+            "event_time",
+            {
+                ascending: true
+            }
         );
 
-    } else {
 
-        const profilesMap = {};
+    if (error) {
 
-        profiles.forEach(profile => {
+        console.error(
+            "Error cargando eventos:",
+            error
+        );
 
-            profilesMap[profile.id] =
-                profile.player_name;
-
-        });
-
-        events.forEach(event => {
-
-            event.creator_name =
-                profilesMap[event.user_id] ||
-                "Usuario";
-
-        });
+        return;
 
     }
+
+
+    // 3. ACTUALIZAR EVENTOS
+    events =
+        data || [];
+
+
+    // ========================================
+    // CARGAR NOMBRES DE LOS CREADORES
+    // ========================================
+
+    const creatorIds = [
+        ...new Set(
+            events
+                .map(
+                    event =>
+                        event.user_id
+                )
+                .filter(Boolean)
+        )
+    ];
+
+
+    if (
+        creatorIds.length > 0
+    ) {
+
+        const {
+            data: profiles,
+            error: profilesError
+        } = await supabaseClient
+
+            .from("profiles")
+
+            .select(
+                "id, player_name"
+            )
+
+            .in(
+                "id",
+                creatorIds
+            );
+
+
+        if (profilesError) {
+
+            console.error(
+                "Error cargando creadores:",
+                profilesError
+            );
+
+        } else {
+
+            const profilesMap = {};
+
+
+            profiles.forEach(
+                profile => {
+
+                    profilesMap[
+                        profile.id
+                    ] =
+                        profile.player_name;
+
+                }
+            );
+
+
+            events.forEach(
+                event => {
+
+                    event.creator_name =
+                        profilesMap[
+                            event.user_id
+                        ] ||
+                        "Usuario";
+
+                }
+            );
+
+        }
+
+    }
+
+
+    // ========================================
+    // CARGAR PARTICIPANTES
+    // ========================================
+
+    await loadParticipants();
+
+
+    // ========================================
+    // RENDERIZAR
+    // ========================================
+
+    renderCalendar();
+
+    renderEvents();
+
+
+    // ========================================
+    // GUARDAR CACHÉ
+    // ========================================
+
+    localStorage.setItem(
+        "events",
+        JSON.stringify(events)
+    );
+
+
+    console.log(
+        "💾 Caché guardado:",
+        events.length,
+        "eventos"
+    );
+
+
+    console.timeEnd(
+        "⏱️ loadEvents"
+    );
+
 }
 
-await loadParticipants();
-renderCalendar();
-renderEvents();
-
-    // Guardar en localStorage para la próxima vez
-    localStorage.setItem("events", JSON.stringify(events));
-    console.log("💾 Caché guardado:", events.length, "eventos");
-
-    console.timeEnd("⏱️ loadEvents");
-}
 
 
 // ============================================
-// CARGAR PARTICIPANTES (Versión directa)
+// CARGAR PARTICIPANTES
 // ============================================
 
 async function loadParticipants() {
-    const { data, error } = await supabaseClient
-        .from("event_participants")
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+
+        .from(
+            "event_participants"
+        )
+
         .select("*");
 
+
     if (error) {
-        console.error("Error cargando participantes:", error);
+
+        console.error(
+            "Error cargando participantes:",
+            error
+        );
+
         return;
+
     }
 
-    participants = data || [];
-    console.log("👥 Participantes cargados:", participants.length);
+
+    participants =
+        data || [];
+
+
+    console.log(
+        "👥 Participantes cargados:",
+        participants.length
+    );
+
 }
+
+
 
 // ============================================
 // FORMATOS Y FUNCIONES AUXILIARES
 // ============================================
 
 function formatDate(date) {
-    return date.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-    });
+
+    return date.toLocaleDateString(
+        "es-ES",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+        }
+    );
+
 }
 
+
+
 // ============================================
-// CONVERSIÓN DE HORA SEGÚN ZONA HORARIA
+// CONVERSIÓN DE ZONA HORARIA
 // ============================================
 
-// Obtener diferencia UTC de una zona horaria
-function getTimezoneOffset(date, timezone) {
+function getTimezoneOffset(
+    date,
+    timezone
+) {
 
-    const parts = new Intl.DateTimeFormat(
-        "en-US",
-        {
-            timeZone: timezone,
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hourCycle: "h23"
-        }
-    ).formatToParts(date);
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-US",
+            {
+                timeZone:
+                    timezone,
+
+                year:
+                    "numeric",
+
+                month:
+                    "2-digit",
+
+                day:
+                    "2-digit",
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                second:
+                    "2-digit",
+
+                hourCycle:
+                    "h23"
+            }
+        ).formatToParts(date);
+
 
     const values = {};
 
-    parts.forEach(part => {
 
-        if (part.type !== "literal") {
-            values[part.type] = Number(part.value);
+    parts.forEach(
+        part => {
+
+            if (
+                part.type !==
+                "literal"
+            ) {
+
+                values[
+                    part.type
+                ] =
+                    Number(
+                        part.value
+                    );
+
+            }
+
         }
-
-    });
-
-    const asUTC = Date.UTC(
-        values.year,
-        values.month - 1,
-        values.day,
-        values.hour,
-        values.minute,
-        values.second
     );
 
-    return asUTC - date.getTime();
+
+    const asUTC =
+        Date.UTC(
+            values.year,
+            values.month - 1,
+            values.day,
+            values.hour,
+            values.minute,
+            values.second
+        );
+
+
+    return (
+        asUTC -
+        date.getTime()
+    );
+
 }
 
 
+
 // ============================================
-// CONVERTIR FECHA/HORA DEL EVENTO A UTC
+// CONVERTIR FECHA/HORA DEL EVENTO
+// A SU INSTANTE REAL
 // ============================================
 
 function eventDateTimeToDate(
@@ -804,39 +984,172 @@ function eventDateTimeToDate(
     timezone
 ) {
 
-    if (!eventDate || !eventTime) {
+    if (
+        !eventDate ||
+        !eventTime
+    ) {
+
         return null;
+
     }
 
-    const [year, month, day] =
-        eventDate.split("-").map(Number);
 
-    const [hours, minutes] =
-        eventTime.split(":").map(Number);
+    const [
+        year,
+        month,
+        day
+    ] =
+        eventDate
+            .split("-")
+            .map(Number);
+
+
+    const [
+        hours,
+        minutes
+    ] =
+        eventTime
+            .split(":")
+            .map(Number);
+
 
     // Fecha aproximada
-    const approximateUTC = new Date(
-        Date.UTC(
-            year,
-            month - 1,
-            day,
-            hours,
-            minutes,
-            0
-        )
-    );
+    const approximateUTC =
+        new Date(
+            Date.UTC(
+                year,
+                month - 1,
+                day,
+                hours,
+                minutes,
+                0
+            )
+        );
 
-    // Diferencia real de la zona del evento
-    const offset = getTimezoneOffset(
-        approximateUTC,
-        timezone || "America/Lima"
-    );
 
-    // Obtener instante UTC real
+    // Diferencia real de la zona
+    const offset =
+        getTimezoneOffset(
+            approximateUTC,
+            timezone ||
+                "America/Lima"
+        );
+
+
+    // Instante UTC real
     return new Date(
-        approximateUTC.getTime() - offset
+        approximateUTC.getTime() -
+        offset
     );
+
 }
+
+
+
+// ============================================
+// OBTENER FECHA + HORA DEL EVENTO
+// SEGÚN LA ZONA DEL LECTOR
+// ============================================
+
+function formatEventDateTime(
+    eventDate,
+    eventTime,
+    eventTimezone
+) {
+
+    const eventDateTime =
+        eventDateTimeToDate(
+            eventDate,
+            eventTime,
+            eventTimezone
+        );
+
+
+    if (!eventDateTime) {
+
+        return {
+
+            date:
+                "Sin fecha",
+
+            time:
+                "Sin hora"
+
+        };
+
+    }
+
+
+    const viewerTimezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone;
+
+
+    const parts =
+        new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                timeZone:
+                    viewerTimezone,
+
+                day:
+                    "2-digit",
+
+                month:
+                    "2-digit",
+
+                year:
+                    "numeric",
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                hour12:
+                    true
+            }
+        ).formatToParts(
+            eventDateTime
+        );
+
+
+    const values = {};
+
+
+    parts.forEach(
+        part => {
+
+            if (
+                part.type !==
+                "literal"
+            ) {
+
+                values[
+                    part.type
+                ] =
+                    part.value;
+
+            }
+
+        }
+    );
+
+
+    return {
+
+        date:
+            `${values.day}/${values.month}/${values.year}`,
+
+        time:
+            `${values.hour}:${values.minute} ${values.dayPeriod || ""}`
+
+    };
+
+}
+
 
 
 // ============================================
@@ -850,16 +1163,27 @@ function formatTime(
 ) {
 
     if (!time) {
+
         return "Sin hora";
+
     }
 
-    // Si no tenemos fecha, mostrar la hora directamente
+
+    // Si no tenemos fecha
     if (!eventDate) {
 
-        const [hours, minutes] =
-            time.split(":").map(Number);
+        const [
+            hours,
+            minutes
+        ] =
+            time
+                .split(":")
+                .map(Number);
 
-        const date = new Date();
+
+        const date =
+            new Date();
+
 
         date.setHours(
             hours,
@@ -868,23 +1192,24 @@ function formatTime(
             0
         );
 
+
         return date.toLocaleTimeString(
             "es-ES",
             {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                hour12:
+                    true
             }
         );
+
     }
 
-    // Zona horaria del visitante
-    const viewerTimezone =
-        Intl.DateTimeFormat()
-            .resolvedOptions()
-            .timeZone;
 
-    // Convertir evento a instante real
     const eventDateTime =
         eventDateTimeToDate(
             eventDate,
@@ -892,37 +1217,70 @@ function formatTime(
             eventTimezone
         );
 
+
     if (!eventDateTime) {
+
         return "Sin hora";
+
     }
 
-    // Mostrar según la zona del visitante
+
+    const viewerTimezone =
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone;
+
+
     return new Intl.DateTimeFormat(
         "es-ES",
         {
-            timeZone: viewerTimezone,
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
+            timeZone:
+                viewerTimezone,
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit",
+
+            hour12:
+                true
         }
-    ).format(eventDateTime);
+    ).format(
+        eventDateTime
+    );
+
 }
+
 
 
 // ============================================
 // MOSTRAR HORA ORIGINAL DEL CREADOR
 // ============================================
 
-function formatTimeOriginal(time) {
+function formatTimeOriginal(
+    time
+) {
 
     if (!time) {
+
         return "Sin hora";
+
     }
 
-    const [hours, minutes] =
-        time.split(":").map(Number);
 
-    const date = new Date();
+    const [
+        hours,
+        minutes
+    ] =
+        time
+            .split(":")
+            .map(Number);
+
+
+    const date =
+        new Date();
+
 
     date.setHours(
         hours,
@@ -931,22 +1289,32 @@ function formatTimeOriginal(time) {
         0
     );
 
+
     return date.toLocaleTimeString(
         "es-ES",
         {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit",
+
+            hour12:
+                true
         }
     );
+
 }
+
 
 
 // ============================================
 // NOMBRE DE LA ZONA HORARIA
 // ============================================
 
-function formatTimezoneName(timezone) {
+function formatTimezoneName(
+    timezone
+) {
 
     const names = {
 
@@ -985,43 +1353,120 @@ function formatTimezoneName(timezone) {
 
     };
 
-    return names[timezone] || timezone || "Zona horaria desconocida";
+
+    return (
+        names[timezone] ||
+        timezone ||
+        "Zona horaria desconocida"
+    );
+
 }
+
+
 
 // ============================================
 // EMOJIS / ÍCONOS DE ACTIVIDAD
 // ============================================
 
-function getEventIcon(type) {
+function getEventIcon(
+    type
+) {
+
     const icons = {
-        dungeon: "🗝️",
-        quest: "🗺️",
-        infinite_dreams: "🌀",
-        commission: "📦",
-        raid: "⚔️",
-        farm: "💰",
-        wanted: "📜",
-        other: "🎲"
+
+        dungeon:
+            "🗝️",
+
+        quest:
+            "🗺️",
+
+        infinite_dreams:
+            "🌀",
+
+        commission:
+            "📦",
+
+        raid:
+            "⚔️",
+
+        farm:
+            "💰",
+
+        wanted:
+            "📜",
+
+        other:
+            "🎲"
+
     };
-    return icons[type] || "🎲";
-}
 
-function getEventParticipants(eventId) {
-    return participants.filter(participant => participant.event_id === eventId);
-}
 
-function isJoined(eventId) {
-    if (!currentUser) return false;
-    return participants.some(
-        participant => participant.event_id === eventId && participant.user_id === currentUser.id
+    return (
+        icons[type] ||
+        "🎲"
     );
+
 }
 
-function escapeHTML(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
+
+
+// ============================================
+// PARTICIPANTES
+// ============================================
+
+function getEventParticipants(
+    eventId
+) {
+
+    return participants.filter(
+        participant =>
+            participant.event_id ===
+            eventId
+    );
+
 }
+
+
+function isJoined(
+    eventId
+) {
+
+    if (!currentUser) {
+
+        return false;
+
+    }
+
+
+    return participants.some(
+        participant =>
+            participant.event_id ===
+                eventId &&
+            participant.user_id ===
+                currentUser.id
+    );
+
+}
+
+
+function escapeHTML(
+    text
+) {
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        text;
+
+
+    return div.innerHTML;
+
+}
+
 
 
 // ============================================
@@ -1030,37 +1475,78 @@ function escapeHTML(text) {
 // ============================================
 
 function renderCalendar() {
-    if (!calendar) return;
+
+    if (!calendar) {
+
+        return;
+
+    }
+
 
     calendar.innerHTML = "";
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
 
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    const year =
+        currentDate.getFullYear();
 
-    let startDay = firstDay.getDay();
 
-    if (startDay === 0) {
+    const month =
+        currentDate.getMonth();
+
+
+    const firstDay =
+        new Date(
+            year,
+            month,
+            1
+        );
+
+
+    const lastDay =
+        new Date(
+            year,
+            month + 1,
+            0
+        );
+
+
+    let startDay =
+        firstDay.getDay();
+
+
+    if (
+        startDay === 0
+    ) {
+
         startDay = 7;
+
     }
+
 
     // ========================================
     // DÍAS VACÍOS
     // ========================================
 
-    for (let i = 1; i < startDay; i++) {
+    for (
+        let i = 1;
+        i < startDay;
+        i++
+    ) {
 
         const emptyDay =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         emptyDay.className =
             "day empty";
 
+
         calendar.appendChild(
             emptyDay
         );
+
     }
 
 
@@ -1075,7 +1561,10 @@ function renderCalendar() {
     ) {
 
         const dayElement =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         dayElement.className =
             "day";
@@ -1092,15 +1581,22 @@ function renderCalendar() {
         const today =
             new Date();
 
+
         if (
-            today.getFullYear() === year &&
-            today.getMonth() === month &&
-            today.getDate() === day
+            today.getFullYear() ===
+                year &&
+
+            today.getMonth() ===
+                month &&
+
+            today.getDate() ===
+                day
         ) {
 
             dayElement.classList.add(
                 "today"
             );
+
         }
 
 
@@ -1109,13 +1605,18 @@ function renderCalendar() {
         // ====================================
 
         const dayNumber =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         dayNumber.className =
             "day-number";
 
+
         dayNumber.textContent =
             day;
+
 
         dayElement.appendChild(
             dayNumber
@@ -1123,116 +1624,121 @@ function renderCalendar() {
 
 
         // ====================================
-        // BUSCAR EVENTOS DE ESTE DÍA
-        // SEGÚN LA ZONA DEL LECTOR
+        // BUSCAR EVENTOS
+        // SEGÚN LA FECHA DEL LECTOR
         // ====================================
 
         const dayEvents =
-            events.filter(event => {
+            events.filter(
+                event => {
 
-                if (
-                    !event.event_date ||
-                    !event.event_time
-                ) {
-                    return false;
-                }
+                    if (
+                        !event.event_date ||
+                        !event.event_time
+                    ) {
+
+                        return false;
+
+                    }
 
 
-                // Convertimos el evento
-                // a la zona horaria del lector
+                    const eventDateTime =
+                        eventDateTimeToDate(
+                            event.event_date,
+                            event.event_time,
+                            event.timezone
+                        );
 
-                const eventDate =
-                    eventDateTimeToDate(
-                        event.event_date,
-                        event.event_time,
-                        event.timezone
+
+                    if (!eventDateTime) {
+
+                        return false;
+
+                    }
+
+
+                    const viewerTimezone =
+                        Intl.DateTimeFormat()
+                            .resolvedOptions()
+                            .timeZone;
+
+
+                    const viewerDate =
+                        new Intl.DateTimeFormat(
+                            "en-CA",
+                            {
+                                timeZone:
+                                    viewerTimezone,
+
+                                year:
+                                    "numeric",
+
+                                month:
+                                    "2-digit",
+
+                                day:
+                                    "2-digit"
+                            }
+                        ).format(
+                            eventDateTime
+                        );
+
+
+                    return (
+                        viewerDate ===
+                        dateString
                     );
 
-
-                if (!eventDate) {
-                    return false;
                 }
-
-
-                const viewerTimezone =
-                    Intl.DateTimeFormat()
-                        .resolvedOptions()
-                        .timeZone;
-
-
-                // Obtener la fecha del evento
-                // en la zona del lector
-
-                const viewerDate =
-                    new Intl.DateTimeFormat(
-                        "en-CA",
-                        {
-                            timeZone:
-                                viewerTimezone,
-
-                            year:
-                                "numeric",
-
-                            month:
-                                "2-digit",
-
-                            day:
-                                "2-digit"
-                        }
-                    ).format(
-                        eventDate
-                    );
-
-
-                return (
-                    viewerDate ===
-                    dateString
-                );
-
-            });
+            );
 
 
         // ====================================
         // MOSTRAR EVENTOS
         // ====================================
 
-        dayEvents.forEach(event => {
+        dayEvents.forEach(
+            event => {
 
-            const eventElement =
-                document.createElement("div");
+                const eventElement =
+                    document.createElement(
+                        "div"
+                    );
 
-            eventElement.className =
-                `calendar-event ${event.type}`;
+
+                eventElement.className =
+                    `calendar-event ${event.type}`;
 
 
-            eventElement.innerHTML = `
+                eventElement.innerHTML = `
 
-                <span class="event-time">
+                    <span class="event-time">
 
-                    ${formatTime(
-                        event.event_time,
-                        event.event_date,
-                        event.timezone
+                        ${formatTime(
+                            event.event_time,
+                            event.event_date,
+                            event.timezone
+                        )}
+
+                    </span>
+
+                    ${getEventIcon(
+                        event.type
                     )}
 
-                </span>
+                    ${escapeHTML(
+                        event.name
+                    )}
 
-                ${getEventIcon(
-                    event.type
-                )}
-
-                ${escapeHTML(
-                    event.name
-                )}
-
-            `;
+                `;
 
 
-            dayElement.appendChild(
-                eventElement
-            );
+                dayElement.appendChild(
+                    eventElement
+                );
 
-        });
+            }
+        );
 
 
         calendar.appendChild(
@@ -1252,8 +1758,11 @@ function renderCalendar() {
             currentDate.toLocaleDateString(
                 "es-ES",
                 {
-                    month: "long",
-                    year: "numeric"
+                    month:
+                        "long",
+
+                    year:
+                        "numeric"
                 }
             );
 
