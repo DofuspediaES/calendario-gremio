@@ -826,28 +826,30 @@ function eventDateTimeToDate(eventDate, eventTime, timezone) {
 
 
 // ============================================
-// MOSTRAR HORA EN LA ZONA DEL USUARIO
+// CONVERTIR HORA DEL EVENTO A LA ZONA DEL USUARIO
 // ============================================
 
 function formatTime(
     time,
     eventDate = null,
-    eventTimezone = "America/Bogota"
+    eventTimezone = "America/Lima"
 ) {
 
-    if (!time) return "Sin hora";
+    if (!time) {
+        return "Sin hora";
+    }
 
-    // Si no tenemos fecha, mantenemos comportamiento normal
-    if (!eventDate) {
+    // Si no hay fecha o zona, mostrar la hora directamente
+    if (!eventDate || !eventTimezone) {
 
         const [hours, minutes] =
-            time.split(":");
+            time.split(":").map(Number);
 
         const date = new Date();
 
         date.setHours(
-            Number(hours),
-            Number(minutes),
+            hours,
+            minutes,
             0,
             0
         );
@@ -856,22 +858,151 @@ function formatTime(
             "es-ES",
             {
                 hour: "2-digit",
-                minute: "2-digit"
+                minute: "2-digit",
+                hour12: true
             }
         );
     }
 
-function formatEventTime(eventDate, eventTime, eventTimezone) {
-    if (!eventDate || !eventTime) {
-        return "Sin hora";
-    }
 
-    if (!eventTimezone) {
-        return formatTime(eventTime);
-    }
+    // ========================================
+    // ZONA HORARIA DEL VISITANTE
+    // ========================================
 
     const viewerTimezone =
-        Intl.DateTimeFormat().resolvedOptions().timeZone;
+        Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone;
+
+
+    // ========================================
+    // CREAR FECHA INTERPRETANDO
+    // LA HORA EN LA ZONA DEL EVENTO
+    // ========================================
+
+    const [year, month, day] =
+        eventDate.split("-").map(Number);
+
+    const [hours, minutes] =
+        time.split(":").map(Number);
+
+
+    // Fecha inicial
+    let utcDate =
+        new Date(
+            Date.UTC(
+                year,
+                month - 1,
+                day,
+                hours,
+                minutes,
+                0
+            )
+        );
+
+
+    // Obtener offset real de la zona del evento
+    // teniendo en cuenta horario de verano
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-US",
+            {
+                timeZone:
+                    eventTimezone,
+
+                year:
+                    "numeric",
+
+                month:
+                    "2-digit",
+
+                day:
+                    "2-digit",
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                second:
+                    "2-digit",
+
+                hourCycle:
+                    "h23"
+            }
+        ).formatToParts(
+            utcDate
+        );
+
+
+    const values = {};
+
+    parts.forEach(
+        part => {
+
+            if (
+                part.type !==
+                "literal"
+            ) {
+
+                values[part.type] =
+                    Number(
+                        part.value
+                    );
+            }
+
+        }
+    );
+
+
+    const timezoneAsUTC =
+        Date.UTC(
+            values.year,
+            values.month - 1,
+            values.day,
+            values.hour,
+            values.minute,
+            values.second
+        );
+
+
+    const offset =
+        timezoneAsUTC -
+        utcDate.getTime();
+
+
+    // Convertir a UTC real
+    utcDate =
+        new Date(
+            utcDate.getTime() -
+            offset
+        );
+
+
+    // ========================================
+    // MOSTRAR EN LA ZONA DEL VISITANTE
+    // ========================================
+
+    return new Intl.DateTimeFormat(
+        "es-ES",
+        {
+            timeZone:
+                viewerTimezone,
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit",
+
+            hour12:
+                true
+        }
+    ).format(
+        utcDate
+    );
+}
 
     // Obtener la diferencia UTC de una zona horaria
     function getTimezoneOffset(timeZone, date) {
@@ -1099,119 +1230,339 @@ const EVENT_TYPE_NAMES = {
 };
 
 function renderEvents() {
+
     if (!eventsList) return;
+
     eventsList.innerHTML = "";
 
     const filteredEvents = events.filter(event => {
+
         const isPast = isPastEvent(
-    event.event_date,
-    event.event_time,
-    event.timezone
-);
+            event.event_date,
+            event.event_time,
+            event.timezone
+        );
 
-        if (currentViewFilter === "upcoming" && isPast) return false;
-        if (currentViewFilter === "past" && !isPast) return false;
-        if (currentViewFilter === "my_events" && (!isJoined(event.id) || isPast)) return false;
+        if (
+            currentViewFilter === "upcoming" &&
+            isPast
+        ) return false;
 
-        if (currentCategoryFilter !== "all" && event.type !== currentCategoryFilter) {
+        if (
+            currentViewFilter === "past" &&
+            !isPast
+        ) return false;
+
+        if (
+            currentViewFilter === "my_events" &&
+            (!isJoined(event.id) || isPast)
+        ) return false;
+
+        if (
+            currentCategoryFilter !== "all" &&
+            event.type !== currentCategoryFilter
+        ) {
             return false;
         }
 
         return true;
+
     });
 
+
     if (filteredEvents.length === 0) {
-        let emptyMessage = "No hay eventos en esta categoría.";
-        if (currentViewFilter === "my_events") emptyMessage = "No te has apuntado a ningún evento próximo.";
-        if (currentViewFilter === "past") emptyMessage = "No hay eventos pasados en el historial.";
+
+        let emptyMessage =
+            "No hay eventos en esta categoría.";
+
+        if (
+            currentViewFilter === "my_events"
+        ) {
+            emptyMessage =
+                "No te has apuntado a ningún evento próximo.";
+        }
+
+        if (
+            currentViewFilter === "past"
+        ) {
+            emptyMessage =
+                "No hay eventos pasados en el historial.";
+        }
 
         eventsList.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #888;">
-                <p style="font-size: 1.1rem;">${emptyMessage}</p>
+                <p style="font-size: 1.1rem;">
+                    ${emptyMessage}
+                </p>
             </div>
         `;
+
         return;
     }
 
+
     filteredEvents.forEach(event => {
-        const card = document.createElement("div");
 
-        const eventType = event.type || "other";
-        card.className = `event-card ${eventType} type-${eventType}`;
+        const card =
+            document.createElement("div");
 
-        const isPast = isPastEvent(
-    event.event_date,
-    event.event_time,
-    event.timezone
-);
+
+        const eventType =
+            event.type || "other";
+
+
+        card.className =
+            `event-card ${eventType} type-${eventType}`;
+
+
+        const isPast =
+            isPastEvent(
+                event.event_date,
+                event.event_time,
+                event.timezone
+            );
+
+
         if (isPast) {
-            card.classList.add("event-past");
+            card.classList.add(
+                "event-past"
+            );
         }
 
-        const eventParticipants = getEventParticipants(event.id);
-        const count = eventParticipants.length;
-        const joined = isJoined(event.id);
-        const isCreator = currentUser && event.user_id === currentUser.id;
+
+        const eventParticipants =
+            getEventParticipants(
+                event.id
+            );
+
+
+        const count =
+            eventParticipants.length;
+
+
+        const joined =
+            isJoined(event.id);
+
+
+        const isCreator =
+            currentUser &&
+            event.user_id === currentUser.id;
+
+
+        // ========================================
+        // PARTICIPANTES
+        // ========================================
 
         let participantHTML = "";
-        eventParticipants.forEach(participant => {
-            participantHTML += `
-                <div class="participant">
-                    ✅ ${escapeHTML(participant.player_name || "Jugador")}
-                </div>
-            `;
-        });
 
-        if (eventParticipants.length === 0) {
-            participantHTML = `<div class="no-participants">Todavía nadie se ha apuntado.</div>`;
+
+        eventParticipants.forEach(
+            participant => {
+
+                participantHTML += `
+                    <div class="participant">
+                        ✅ ${escapeHTML(
+                            participant.player_name ||
+                            "Jugador"
+                        )}
+                    </div>
+                `;
+
+            }
+        );
+
+
+        if (
+            eventParticipants.length === 0
+        ) {
+
+            participantHTML =
+                `<div class="no-participants">
+                    Todavía nadie se ha apuntado.
+                </div>`;
+
         }
+
+
+        // ========================================
+        // BOTÓN PRINCIPAL
+        // ========================================
 
         let buttonHTML;
+
+
         if (isPast) {
-            buttonHTML = `<button class="full-button" disabled style="opacity: 0.6;">🏁 Evento Finalizado</button>`;
-        } else if (joined) {
-            buttonHTML = `<button class="leave-button" onclick="leaveEvent(${event.id})">🔴 Retirarme</button>`;
-        } else if (count >= event.capacity) {
-            buttonHTML = `<button class="full-button" disabled>🚫 Completo</button>`;
-        } else {
-            buttonHTML = `<button class="join-button" onclick="joinEvent(${event.id})">🟢 Apuntarme</button>`;
+
+            buttonHTML =
+                `<button
+                    class="full-button"
+                    disabled
+                    style="opacity: 0.6;"
+                >
+                    🏁 Evento Finalizado
+                </button>`;
+
         }
+
+        else if (joined) {
+
+            buttonHTML =
+                `<button
+                    class="leave-button"
+                    onclick="leaveEvent(${event.id})"
+                >
+                    🔴 Retirarme
+                </button>`;
+
+        }
+
+        else if (
+            count >= event.capacity
+        ) {
+
+            buttonHTML =
+                `<button
+                    class="full-button"
+                    disabled
+                >
+                    🚫 Completo
+                </button>`;
+
+        }
+
+        else {
+
+            buttonHTML =
+                `<button
+                    class="join-button"
+                    onclick="joinEvent(${event.id})"
+                >
+                    🟢 Apuntarme
+                </button>`;
+
+        }
+
+
+        // ========================================
+        // BOTONES DEL CREADOR
+        // ========================================
 
         let creatorButtonsHTML = "";
-        if (isCreator && !isPast) {
+
+
+        if (
+            isCreator &&
+            !isPast
+        ) {
+
             creatorButtonsHTML = `
-                <div class="creator-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                    <button class="edit-button" onclick="openEditModal(${event.id})" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                <div
+                    class="creator-actions"
+                    style="
+                        margin-top: 10px;
+                        display: flex;
+                        gap: 8px;
+                    "
+                >
+
+                    <button
+                        class="edit-button"
+                        onclick="openEditModal(${event.id})"
+                        style="
+                            background-color: #f39c12;
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                        "
+                    >
                         ✏️ Editar
                     </button>
-                    <button class="delete-button" onclick="deleteEvent(${event.id})" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+
+
+                    <button
+                        class="delete-button"
+                        onclick="deleteEvent(${event.id})"
+                        style="
+                            background-color: #e74c3c;
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                        "
+                    >
                         🗑️ Eliminar
                     </button>
+
                 </div>
             `;
+
         }
 
-                const typeLabel =
+
+        // ========================================
+        // DATOS DEL EVENTO
+        // ========================================
+
+        const typeLabel =
             EVENT_TYPE_NAMES[eventType] ||
             eventType;
 
+
         const creatorName =
-    event.creator_name ||
-    "Usuario";
+            event.creator_name ||
+            "Usuario";
+
+
+        // Hora original introducida por el creador
+        const originalTime =
+            formatTimeOriginal(
+                event.event_time
+            );
+
+
+        // Zona horaria original
+        const timezoneName =
+            formatTimezoneName(
+                event.timezone
+            );
+
+
+        // Hora convertida a la zona del visitante
+        const viewerTime =
+            formatTime(
+                event.event_time,
+                event.event_date,
+                event.timezone
+            );
+
+
+        // ========================================
+        // TARJETA
+        // ========================================
 
         card.innerHTML = `
+
             <div class="event-card-header">
 
                 <div>
 
-                    <span class="event-type-badge ${eventType}">
+                    <span
+                        class="event-type-badge ${eventType}"
+                    >
                         ${getEventIcon(event.type)}
                         ${typeLabel}
                     </span>
 
+
                     <h3>
-                        ${escapeHTML(event.name)}
+                        ${escapeHTML(
+                            event.name
+                        )}
                     </h3>
+
 
                     <div class="event-info">
 
@@ -1225,17 +1576,36 @@ function renderEvents() {
 
                         &nbsp;&nbsp;
 
-                        🕐 ${
-                            formatTime(
-                                event.event_time,
-                                event.event_date,
-                                event.timezone
-                            )
-                        }
+                        🕐
+                        <strong>
+                            ${viewerTime}
+                        </strong>
+
+                        — Tu hora
+
+                    </div>
+
+
+                    <div
+                        class="event-info"
+                        style="
+                            font-size: 0.9em;
+                            opacity: 0.8;
+                            margin-top: 3px;
+                        "
+                    >
+
+                        📍 Hora original:
+                        <strong>
+                            ${originalTime}
+                        </strong>
+
+                        ${timezoneName}
 
                     </div>
 
                 </div>
+
 
                 <div class="capacity">
                     👥 ${count}/${event.capacity}
@@ -1245,17 +1615,27 @@ function renderEvents() {
 
 
             <div class="event-info">
+
                 ${escapeHTML(
                     event.description || ""
                 )}
+
             </div>
 
 
-            <div class="event-info" style="margin-top: 6px;">
+            <div
+                class="event-info"
+                style="margin-top: 6px;"
+            >
+
                 👑 Creado por:
+
                 <strong>
-                    ${escapeHTML(creatorName)}
+                    ${escapeHTML(
+                        creatorName
+                    )}
                 </strong>
+
             </div>
 
 
@@ -1264,6 +1644,7 @@ function renderEvents() {
                 <strong>
                     👥 Participantes
                 </strong>
+
 
                 <div class="participants-list">
 
@@ -1281,11 +1662,16 @@ function renderEvents() {
                 ${creatorButtonsHTML}
 
             </div>
+
         `;
 
-        eventsList.appendChild(card);
+
+        eventsList.appendChild(
+            card
+        );
 
     });
+
 }
 
 
