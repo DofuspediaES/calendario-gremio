@@ -1026,6 +1026,7 @@ function escapeHTML(text) {
 
 // ============================================
 // RENDERIZAR CALENDARIO
+// SEGÚN LA ZONA HORARIA DEL LECTOR
 // ============================================
 
 function renderCalendar() {
@@ -1040,64 +1041,224 @@ function renderCalendar() {
     const lastDay = new Date(year, month + 1, 0);
 
     let startDay = firstDay.getDay();
-    if (startDay === 0) startDay = 7;
 
-    // DÍAS VACÍOS
-    for (let i = 1; i < startDay; i++) {
-        const emptyDay = document.createElement("div");
-        emptyDay.className = "day empty";
-        calendar.appendChild(emptyDay);
+    if (startDay === 0) {
+        startDay = 7;
     }
 
+    // ========================================
+    // DÍAS VACÍOS
+    // ========================================
+
+    for (let i = 1; i < startDay; i++) {
+
+        const emptyDay =
+            document.createElement("div");
+
+        emptyDay.className =
+            "day empty";
+
+        calendar.appendChild(
+            emptyDay
+        );
+    }
+
+
+    // ========================================
     // DÍAS DEL MES
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-        const dayElement = document.createElement("div");
-        dayElement.className = "day";
+    // ========================================
 
-        const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    for (
+        let day = 1;
+        day <= lastDay.getDate();
+        day++
+    ) {
 
-        const today = new Date();
+        const dayElement =
+            document.createElement("div");
+
+        dayElement.className =
+            "day";
+
+
+        const dateString =
+            `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+
+        // ====================================
+        // ¿ES HOY?
+        // ====================================
+
+        const today =
+            new Date();
+
         if (
             today.getFullYear() === year &&
             today.getMonth() === month &&
             today.getDate() === day
         ) {
-            dayElement.classList.add("today");
+
+            dayElement.classList.add(
+                "today"
+            );
         }
 
-        const dayNumber = document.createElement("div");
-        dayNumber.className = "day-number";
-        dayNumber.textContent = day;
-        dayElement.appendChild(dayNumber);
 
-        const dayEvents = events.filter(event => event.event_date === dateString);
+        // ====================================
+        // NÚMERO DEL DÍA
+        // ====================================
+
+        const dayNumber =
+            document.createElement("div");
+
+        dayNumber.className =
+            "day-number";
+
+        dayNumber.textContent =
+            day;
+
+        dayElement.appendChild(
+            dayNumber
+        );
+
+
+        // ====================================
+        // BUSCAR EVENTOS DE ESTE DÍA
+        // SEGÚN LA ZONA DEL LECTOR
+        // ====================================
+
+        const dayEvents =
+            events.filter(event => {
+
+                if (
+                    !event.event_date ||
+                    !event.event_time
+                ) {
+                    return false;
+                }
+
+
+                // Convertimos el evento
+                // a la zona horaria del lector
+
+                const eventDate =
+                    eventDateTimeToDate(
+                        event.event_date,
+                        event.event_time,
+                        event.timezone
+                    );
+
+
+                if (!eventDate) {
+                    return false;
+                }
+
+
+                const viewerTimezone =
+                    Intl.DateTimeFormat()
+                        .resolvedOptions()
+                        .timeZone;
+
+
+                // Obtener la fecha del evento
+                // en la zona del lector
+
+                const viewerDate =
+                    new Intl.DateTimeFormat(
+                        "en-CA",
+                        {
+                            timeZone:
+                                viewerTimezone,
+
+                            year:
+                                "numeric",
+
+                            month:
+                                "2-digit",
+
+                            day:
+                                "2-digit"
+                        }
+                    ).format(
+                        eventDate
+                    );
+
+
+                return (
+                    viewerDate ===
+                    dateString
+                );
+
+            });
+
+
+        // ====================================
+        // MOSTRAR EVENTOS
+        // ====================================
 
         dayEvents.forEach(event => {
-            const eventElement = document.createElement("div");
-            eventElement.className = `calendar-event ${event.type}`;
+
+            const eventElement =
+                document.createElement("div");
+
+            eventElement.className =
+                `calendar-event ${event.type}`;
+
+
             eventElement.innerHTML = `
+
                 <span class="event-time">
+
                     ${formatTime(
-    event.event_time,
-    event.event_date,
-    event.timezone
-)}
+                        event.event_time,
+                        event.event_date,
+                        event.timezone
+                    )}
+
                 </span>
-                ${getEventIcon(event.type)}
-                ${escapeHTML(event.name)}
+
+                ${getEventIcon(
+                    event.type
+                )}
+
+                ${escapeHTML(
+                    event.name
+                )}
+
             `;
-            dayElement.appendChild(eventElement);
+
+
+            dayElement.appendChild(
+                eventElement
+            );
+
         });
 
-        calendar.appendChild(dayElement);
+
+        calendar.appendChild(
+            dayElement
+        );
+
     }
+
+
+    // ========================================
+    // TÍTULO DEL MES
+    // ========================================
 
     if (monthTitle) {
-        monthTitle.textContent = currentDate.toLocaleDateString("es-ES", {
-            month: "long",
-            year: "numeric"
-        });
+
+        monthTitle.textContent =
+            currentDate.toLocaleDateString(
+                "es-ES",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            );
+
     }
+
 }
 
 
