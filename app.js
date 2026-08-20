@@ -2233,7 +2233,7 @@ function renderEvents() {
 
 
 // ============================================
-// APUNTARSE A UN EVENTO (CORREGIDO)
+// APUNTARSE A UN EVENTO
 // ============================================
 
 async function joinEvent(eventId) {
@@ -2283,7 +2283,7 @@ async function joinEvent(eventId) {
     // 2. Notificar a la Edge Function para actualizar Discord
     try {
         await supabaseClient.functions.invoke("discord-event", {
-            body: { action: "sync_message", event_id: eventId }
+            body: { action: "update_message", event_id: eventId }
         });
     } catch (syncErr) {
         console.warn("⚠️ No se pudo sincronizar el embed en Discord:", syncErr);
@@ -2347,7 +2347,7 @@ function openEditModal(eventId) {
 
 
 // ============================================
-// RETIRARSE DE UN EVENTO (CORREGIDO)
+// RETIRARSE DE UN EVENTO
 // ============================================
 
 async function leaveEvent(eventId) {
@@ -2369,7 +2369,7 @@ async function leaveEvent(eventId) {
     // 2. Notificar a la Edge Function para actualizar Discord
     try {
         await supabaseClient.functions.invoke("discord-event", {
-            body: { action: "sync_message", event_id: eventId }
+            body: { action: "update_message", event_id: eventId }
         });
     } catch (syncErr) {
         console.warn("⚠️ No se pudo sincronizar el embed en Discord:", syncErr);
@@ -2449,8 +2449,8 @@ if (eventForm) {
 
     console.log("🟢 Registrando listener del formulario...");
     eventForm.addEventListener("click", (e) => {
-    console.log("🖱️ CLICK:", e.target);
-});
+        console.log("🖱️ CLICK:", e.target);
+    });
 
     eventForm.addEventListener("submit", async (e) => {
 
@@ -2513,14 +2513,14 @@ if (eventForm) {
                 const { error } = await supabaseClient
                     .from("events")
                     .update({
-    name: name,
-    type: type,
-    event_date: date,
-    event_time: time,
-    capacity: capacity,
-    description: description,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-})
+                        name: name,
+                        type: type,
+                        event_date: date,
+                        event_time: time,
+                        capacity: capacity,
+                        description: description,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    })
                     .eq("id", editingEventId)
                     .eq("user_id", currentUser.id);
 
@@ -2543,6 +2543,15 @@ if (eventForm) {
                     "✅ Actividad actualizada correctamente."
                 );
 
+                // Notificar a Discord la edición del evento
+                try {
+                    await supabaseClient.functions.invoke("discord-event", {
+                        body: { action: "update_message", event_id: editingEventId }
+                    });
+                } catch (discordErr) {
+                    console.warn("⚠️ Error actualizando Discord al editar:", discordErr);
+                }
+
             }
 
             // ========================================
@@ -2564,7 +2573,7 @@ if (eventForm) {
                         event_time: time,
                         capacity: capacity,
                         description: description,
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone // ⬅️ Añade esta línea aquí
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
                     })
                     .select()
                     .single();
@@ -2725,7 +2734,7 @@ function connectDiscord() {
 }
 
 // ============================================
-// PROCESAR REGRESO DE DISCORD (MODIFICADO)
+// PROCESAR REGRESO DE DISCORD
 // ============================================
 
 async function processDiscordCallback() {
@@ -2839,6 +2848,32 @@ async function processDiscordCallback() {
 }
 
 // ============================================
+// ESCUCHAR CAMBIOS EN TIEMPO REAL (SUSCRIPCIÓN)
+// ============================================
+
+function subscribeToRealtime() {
+    supabaseClient
+        .channel('schema-db-changes')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'event_participants' },
+            async (payload) => {
+                console.log("🔄 Cambio detectado en participantes, recargando...", payload);
+                await loadEvents();
+            }
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'events' },
+            async (payload) => {
+                console.log("🔄 Cambio detectado en eventos, recargando...", payload);
+                await loadEvents();
+            }
+        )
+        .subscribe();
+}
+
+// ============================================
 // INICIAR APLICACIÓN
 // ============================================
 
@@ -2870,6 +2905,9 @@ async function initApp() {
 
     // 6. Actualizar botón de notificaciones
     updateNotificationButton();
+
+    // 7. Escuchar cambios de Discord/base de datos en vivo
+    subscribeToRealtime();
 
     console.log("✅ Calendario iniciado correctamente.");
 }
