@@ -2233,7 +2233,7 @@ function renderEvents() {
 
 
 // ============================================
-// APUNTARSE A UN EVENTO
+// APUNTARSE A UN EVENTO (CORREGIDO)
 // ============================================
 
 async function joinEvent(eventId) {
@@ -2262,18 +2262,31 @@ async function joinEvent(eventId) {
         currentUser.user_metadata?.username ||
         "Jugador";
 
+    // 1. Guardar en Supabase
     const { error } = await supabaseClient
         .from("event_participants")
-        .insert({
+        .upsert({
             event_id: eventId,
             user_id: currentUser.id,
-            player_name: playerName
+            player_name: playerName,
+            discord_id: currentProfile?.discord_id || null
+        }, {
+            onConflict: "event_id,user_id"
         });
 
     if (error) {
         console.error("Error apuntándose:", error);
         alert("No se pudo apuntar. Revisa la consola.");
         return;
+    }
+
+    // 2. Notificar a la Edge Function para actualizar Discord
+    try {
+        await supabaseClient.functions.invoke("discord-event", {
+            body: { action: "sync_message", event_id: eventId }
+        });
+    } catch (syncErr) {
+        console.warn("⚠️ No se pudo sincronizar el embed en Discord:", syncErr);
     }
 
     await loadEvents();
@@ -2334,12 +2347,13 @@ function openEditModal(eventId) {
 
 
 // ============================================
-// RETIRARSE DE UN EVENTO
+// RETIRARSE DE UN EVENTO (CORREGIDO)
 // ============================================
 
 async function leaveEvent(eventId) {
     if (!currentUser) return;
 
+    // 1. Eliminar de Supabase
     const { error } = await supabaseClient
         .from("event_participants")
         .delete()
@@ -2350,6 +2364,15 @@ async function leaveEvent(eventId) {
         console.error("Error retirándose:", error);
         alert("No se pudo retirar la inscripción.");
         return;
+    }
+
+    // 2. Notificar a la Edge Function para actualizar Discord
+    try {
+        await supabaseClient.functions.invoke("discord-event", {
+            body: { action: "sync_message", event_id: eventId }
+        });
+    } catch (syncErr) {
+        console.warn("⚠️ No se pudo sincronizar el embed en Discord:", syncErr);
     }
 
     await loadEvents();
