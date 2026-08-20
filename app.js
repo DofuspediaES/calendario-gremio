@@ -2245,9 +2245,7 @@ async function joinEvent(eventId) {
     const event = events.find(e => e.id === eventId);
     if (!event) return;
 
-    const currentParticipants = getEventParticipants(eventId);
-
-    if (currentParticipants.length >= event.capacity) {
+    if (getEventParticipants(eventId).length >= event.capacity) {
         alert("Este evento está completo.");
         return;
     }
@@ -2257,29 +2255,41 @@ async function joinEvent(eventId) {
         return;
     }
 
-    // Invocar Edge Function para guardar en BD y actualizar Embed en Discord
-    try {
-        const { error } = await supabaseClient.functions.invoke("discord-event", {
-            body: { 
-                action: "web_sync_participant", 
-                event_id: eventId, 
-                user_id: currentUser.id, 
-                type: "join" 
-            }
+    // Obtener nombre tanto si ingresó manualmente como si está conectado por Discord
+    const playerName = currentProfile?.player_name ||
+        currentUser.user_metadata?.full_name ||
+        currentUser.user_metadata?.username ||
+        "Jugador";
+
+    // 1. Guardar en Supabase directamente desde la Web
+    const { error: dbError } = await supabaseClient
+        .from("event_participants")
+        .upsert({
+            event_id: eventId,
+            user_id: currentUser.id,
+            player_name: playerName,
+            discord_id: currentProfile?.discord_id || null
+        }, {
+            onConflict: "event_id,user_id"
         });
 
-        if (error) {
-            console.error("Error al unirse:", error);
-            alert("No se pudo completar el registro.");
-            return;
-        }
+    if (dbError) {
+        console.error("❌ Error guardando en BD:", dbError);
+        alert("No se pudo registrar tu participación.");
+        return;
+    }
+
+    // 2. Notificar a la Edge Function para actualizar el mensaje en Discord
+    try {
+        await supabaseClient.functions.invoke("discord-event", {
+            body: { action: "update_message", event_id: eventId }
+        });
     } catch (syncErr) {
-        console.warn("⚠️ Error notificando a la Edge Function:", syncErr);
+        console.warn("⚠️ No se pudo sincronizar con Discord:", syncErr);
     }
 
     await loadEvents();
 }
-
 
 // ============================================
 // ELIMINAR UN EVENTO
@@ -2341,28 +2351,30 @@ function openEditModal(eventId) {
 async function leaveEvent(eventId) {
     if (!currentUser) return;
 
-    try {
-        const { error } = await supabaseClient.functions.invoke("discord-event", {
-            body: { 
-                action: "web_sync_participant", 
-                event_id: eventId, 
-                user_id: currentUser.id, 
-                type: "leave" 
-            }
-        });
+    // 1. Eliminar de Supabase directamente desde la Web
+    const { error: dbError } = await supabaseClient
+        .from("event_participants")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("user_id", currentUser.id);
 
-        if (error) {
-            console.error("Error al salir:", error);
-            alert("No se pudo cancelar la inscripción.");
-            return;
-        }
+    if (dbError) {
+        console.error("❌ Error al retirarse:", dbError);
+        alert("No se pudo cancelar la inscripción.");
+        return;
+    }
+
+    // 2. Notificar a la Edge Function para actualizar Discord
+    try {
+        await supabaseClient.functions.invoke("discord-event", {
+            body: { action: "update_message", event_id: eventId }
+        });
     } catch (syncErr) {
-        console.warn("⚠️ Error notificando a la Edge Function:", syncErr);
+        console.warn("⚠️ No se pudo sincronizar con Discord:", syncErr);
     }
 
     await loadEvents();
 }
-
 
 // ============================================
 // LISTENERS / EVENTOS
