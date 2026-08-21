@@ -2279,14 +2279,51 @@ async function joinEvent(eventId) {
         return;
     }
 
-    // 2. Notificar a la Edge Function para actualizar el mensaje en Discord
-    try {
-        await supabaseClient.functions.invoke("discord-event", {
-            body: { action: "update_message", event_id: eventId }
-        });
-    } catch (syncErr) {
-        console.warn("⚠️ No se pudo sincronizar con Discord:", syncErr);
+// 2. Sincronizar inscripción con Discord
+try {
+
+    const {
+        data: discordSyncData,
+        error: discordSyncError
+    } = await supabaseClient.functions.invoke(
+        "discord-event",
+        {
+            body: {
+                action: "web_sync_participant",
+
+                event_id: eventId,
+
+                user_id: currentUser.id,
+
+                type: "join"
+            }
+        }
+    );
+
+    if (discordSyncError) {
+
+        console.error(
+            "❌ Error sincronizando inscripción con Discord:",
+            discordSyncError
+        );
+
+    } else {
+
+        console.log(
+            "🟢 Inscripción sincronizada con Discord:",
+            discordSyncData
+        );
+
     }
+
+} catch (syncErr) {
+
+    console.error(
+        "❌ Error enviando inscripción a Discord:",
+        syncErr
+    );
+
+}
 
     await loadEvents();
 }
@@ -2364,14 +2401,51 @@ async function leaveEvent(eventId) {
         return;
     }
 
-    // 2. Notificar a la Edge Function para actualizar Discord
-    try {
-        await supabaseClient.functions.invoke("discord-event", {
-            body: { action: "update_message", event_id: eventId }
-        });
-    } catch (syncErr) {
-        console.warn("⚠️ No se pudo sincronizar con Discord:", syncErr);
+    // 2. Sincronizar retiro con Discord
+try {
+
+    const {
+        data: discordSyncData,
+        error: discordSyncError
+    } = await supabaseClient.functions.invoke(
+        "discord-event",
+        {
+            body: {
+                action: "web_sync_participant",
+
+                event_id: eventId,
+
+                user_id: currentUser.id,
+
+                type: "leave"
+            }
+        }
+    );
+
+    if (discordSyncError) {
+
+        console.error(
+            "❌ Error sincronizando retiro con Discord:",
+            discordSyncError
+        );
+
+    } else {
+
+        console.log(
+            "🔴 Retiro sincronizado con Discord:",
+            discordSyncData
+        );
+
     }
+
+} catch (syncErr) {
+
+    console.error(
+        "❌ Error enviando retiro a Discord:",
+        syncErr
+    );
+
+}
 
     await loadEvents();
 }
