@@ -2652,7 +2652,10 @@ if (participantError) {
                     } = await supabaseClient.functions.invoke(
                         "discord-event",
                         {
-                            body: data
+                            body: {
+    ...data,
+    player_name: currentProfile?.player_name || null
+}
                         }
                     );
 
