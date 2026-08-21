@@ -92,6 +92,9 @@ if (submitButtonTest) {
 }
 
 const notificationButton = document.getElementById("notificationButton");
+if (notificationButton) {
+    notificationButton.addEventListener("click", enableNotifications);
+}
 const changeNameButton = document.getElementById("changeNameButton");
 
 
