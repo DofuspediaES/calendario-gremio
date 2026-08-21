@@ -2594,63 +2594,8 @@ if (eventForm) {
                     data
                 );
 
-// ====================================
+                // ====================================
 // APUNTAR AUTOMÁTICAMENTE AL CREADOR
-// ====================================
-
-let creatorPlayerName = currentProfile?.player_name;
-
-
-// Si currentProfile no tiene el nombre,
-// obtenerlo directamente desde profiles
-if (!creatorPlayerName) {
-
-    const {
-        data: profileData,
-        error: profileError
-    } = await supabaseClient
-        .from("profiles")
-        .select("player_name")
-        .eq("id", currentUser.id)
-        .single();
-
-    if (profileError) {
-
-        console.error(
-            "❌ Error obteniendo perfil del creador:",
-            profileError
-        );
-
-        alert(
-            "La actividad se creó, pero no se pudo obtener tu nombre."
-        );
-
-        return;
-    }
-
-    creatorPlayerName =
-        profileData?.player_name;
-}
-
-
-// Verificar que exista el nombre
-if (!creatorPlayerName) {
-
-    console.error(
-        "❌ El creador no tiene player_name:",
-        currentUser.id
-    );
-
-    alert(
-        "La actividad se creó, pero tu perfil no tiene nombre de jugador."
-    );
-
-    return;
-}
-
-
-// ====================================
-// REGISTRAR CREADOR COMO PARTICIPANTE
 // ====================================
 
 const {
@@ -2659,24 +2604,14 @@ const {
     .from("event_participants")
     .upsert(
         {
-            event_id:
-                data.id,
-
-            user_id:
-                currentUser.id,
-
-            player_name:
-                creatorPlayerName,
-
-            discord_id:
-                null
+            event_id: data.id,
+            user_id: currentUser.id,
+            player_name: currentProfile?.player_name || null
         },
         {
-            onConflict:
-                "event_id,user_id"
+            onConflict: "event_id,user_id"
         }
     );
-
 
 if (participantError) {
 
@@ -2694,66 +2629,62 @@ if (participantError) {
     console.log(
         "🟢 Creador apuntado automáticamente:",
         {
-            event_id:
-                data.id,
-
-            user_id:
-                currentUser.id,
-
-            player_name:
-                creatorPlayerName
+            event_id: data.id,
+            user_id: currentUser.id
         }
     );
 
 }
 
+                alert(
+                    "✅ Actividad creada correctamente."
+                );
 
-// ====================================
-// AVISAR A DISCORD
-// ====================================
+                // ====================================
+                // AVISAR A DISCORD
+                // ====================================
 
-try {
+                try {
 
-    const {
-        data: discordData,
-        error: discordError
-    } = await supabaseClient.functions.invoke(
-        "discord-event",
-        {
-            body: {
-                ...data,
+                    const {
+                        data: discordData,
+                        error: discordError
+                    } = await supabaseClient.functions.invoke(
+                        "discord-event",
+                        {
+                            body: {
+    ...data,
+    player_name: currentProfile?.player_name || null
+}
+                        }
+                    );
 
-                player_name:
-                    creatorPlayerName
+                    if (discordError) {
+
+                        console.error(
+                            "⚠️ Error publicando en Discord:",
+                            discordError
+                        );
+
+                    } else {
+
+                        console.log(
+                            "📢 Discord respondió:",
+                            discordData
+                        );
+
+                    }
+
+                } catch (discordError) {
+
+                    console.error(
+                        "⚠️ Error enviando a Discord:",
+                        discordError
+                    );
+
+                }
             }
-        }
-    );
 
-
-    if (discordError) {
-
-        console.error(
-            "⚠️ Error publicando en Discord:",
-            discordError
-        );
-
-    } else {
-
-        console.log(
-            "📢 Discord respondió:",
-            discordData
-        );
-
-    }
-
-} catch (discordError) {
-
-    console.error(
-        "⚠️ Error enviando a Discord:",
-        discordError
-    );
-
-}
             // ========================================
             // LIMPIAR
             // ========================================
