@@ -2594,6 +2594,48 @@ if (eventForm) {
                     data
                 );
 
+                // ====================================
+// APUNTAR AUTOMÁTICAMENTE AL CREADOR
+// ====================================
+
+const {
+    error: participantError
+} = await supabaseClient
+    .from("event_participants")
+    .upsert(
+        {
+            event_id: data.id,
+            user_id: currentUser.id,
+            player_name: currentProfile?.player_name || null
+        },
+        {
+            onConflict: "event_id,user_id"
+        }
+    );
+
+if (participantError) {
+
+    console.error(
+        "❌ Error apuntando al creador:",
+        participantError
+    );
+
+    alert(
+        "⚠️ La actividad se creó, pero no se pudo registrar tu inscripción."
+    );
+
+} else {
+
+    console.log(
+        "🟢 Creador apuntado automáticamente:",
+        {
+            event_id: data.id,
+            user_id: currentUser.id
+        }
+    );
+
+}
+
                 alert(
                     "✅ Actividad creada correctamente."
                 );
