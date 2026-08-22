@@ -2536,13 +2536,33 @@ async function leaveEvent(eventId) {
 
     // 2. Notificar a la Edge Function para actualizar Discord
     try {
-        await supabaseClient.functions.invoke("discord-event", {
-            body: { action: "update_message", event_id: eventId }
-        });
-    } catch (syncErr) {
-        console.warn("⚠️ No se pudo sincronizar con Discord:", syncErr);
-    }
 
+    const {
+        data: discordData,
+        error: discordError
+    } = await supabaseClient.functions.invoke(
+        "discord-event",
+        {
+            body: {
+                action: "update_message",
+                event_id: eventId
+            }
+        }
+    );
+
+    console.log("📢 Respuesta discord-event:", {
+        data: discordData,
+        error: discordError
+    });
+
+} catch (syncErr) {
+
+    console.error(
+        "❌ Error llamando a discord-event:",
+        syncErr
+    );
+
+}
     await loadEvents();
 }
 
