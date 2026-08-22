@@ -2282,6 +2282,52 @@ async function joinEvent(eventId) {
         return;
     }
 
+    // ============================================
+// NOTIFICAR QUE ALGUIEN SE APUNTÓ
+// ============================================
+
+try {
+
+    const {
+        data: pushData,
+        error: pushError
+    } = await supabaseClient.functions.invoke(
+        "send-push",
+        {
+            body: {
+                type: "participant_joined",
+                event_id: eventId,
+                participant_user_id: currentUser.id
+            }
+        }
+    );
+
+
+    if (pushError) {
+
+        console.error(
+            "⚠️ Error enviando notificación de inscripción:",
+            pushError
+        );
+
+    } else {
+
+        console.log(
+            "🔔 Notificación de inscripción enviada:",
+            pushData
+        );
+
+    }
+
+} catch (pushError) {
+
+    console.error(
+        "⚠️ Error llamando a send-push:",
+        pushError
+    );
+
+}
+
     // 2. Notificar a la Edge Function para actualizar el mensaje en Discord
     try {
         await supabaseClient.functions.invoke("discord-event", {
