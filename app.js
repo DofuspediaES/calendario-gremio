@@ -551,75 +551,184 @@ function updateNotificationButton() {
 // ============================================
 
 async function subscribeToPush() {
-    if (!("serviceWorker" in navigator) || !currentUser) return;
+
+    console.log("🔔 INICIANDO SUSCRIPCIÓN PUSH");
+
+    if (!("serviceWorker" in navigator)) {
+        console.error("❌ Este navegador no soporta Service Worker");
+        alert("❌ Tu navegador no soporta Service Worker.");
+        return;
+    }
+
+    if (!currentUser) {
+        console.error("❌ No existe currentUser");
+        alert("❌ No hay usuario conectado.");
+        return;
+    }
 
     try {
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
+
+        console.log("👤 Usuario:", currentUser.id);
+
+        // ============================================
+        // BUSCAR SERVICE WORKER
+        // ============================================
+
+        const registration =
+            await navigator.serviceWorker.ready;
+
+        console.log(
+            "✅ Service Worker encontrado:",
+            registration
+        );
+
+
+        // ============================================
+        // BUSCAR SUSCRIPCIÓN EXISTENTE
+        // ============================================
+
+        let subscription =
+            await registration.pushManager.getSubscription();
+
+        console.log(
+            "📱 Suscripción existente:",
+            subscription
+        );
+
+
+        // ============================================
+        // CREAR SUSCRIPCIÓN
+        // ============================================
 
         if (!subscription) {
-            const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: convertedKey
-            });
+
+            console.log(
+                "🆕 No existe suscripción. Creando..."
+            );
+
+            const convertedKey =
+                urlBase64ToUint8Array(
+                    VAPID_PUBLIC_KEY
+                );
+
+            subscription =
+                await registration.pushManager.subscribe({
+
+                    userVisibleOnly:
+                        true,
+
+                    applicationServerKey:
+                        convertedKey
+
+                });
+
+            console.log(
+                "✅ NUEVA SUSCRIPCIÓN CREADA:",
+                subscription
+            );
+
         }
 
-        const jsonSub = subscription.toJSON();
 
-        const { error } = await supabaseClient
+        // ============================================
+        // CONVERTIR SUSCRIPCIÓN
+        // ============================================
+
+        const jsonSub =
+            subscription.toJSON();
+
+        console.log(
+            "📦 Datos de suscripción:",
+            jsonSub
+        );
+
+
+        // ============================================
+        // GUARDAR EN SUPABASE
+        // ============================================
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
             .from("push_subscriptions")
-            .upsert({
-                user_id: currentUser.id,
-                endpoint: jsonSub.endpoint,
-                p256dh: jsonSub.keys ? jsonSub.keys.p256dh : "",
-                auth: jsonSub.keys ? jsonSub.keys.auth : "",
-                updated_at: new Date().toISOString()
-            }, {
-                onConflict: "user_id, endpoint"
-            });
+
+            .upsert(
+                {
+                    user_id:
+                        currentUser.id,
+
+                    endpoint:
+                        jsonSub.endpoint,
+
+                    p256dh:
+                        jsonSub.keys?.p256dh || "",
+
+                    auth:
+                        jsonSub.keys?.auth || "",
+
+                    updated_at:
+                        new Date().toISOString()
+                },
+                {
+                    onConflict:
+                        "user_id,endpoint"
+                }
+            )
+
+            .select();
+
+
+        console.log(
+            "💾 RESULTADO GUARDADO:",
+            {
+                data,
+                error
+            }
+        );
+
 
         if (error) {
-            console.error("Error guardando suscripción en Supabase:", error);
-        } else {
-            console.log("Suscripción Push guardada correctamente en Supabase.");
+
+            console.error(
+                "❌ ERROR GUARDANDO SUSCRIPCIÓN:",
+                error
+            );
+
+            alert(
+                "❌ La suscripción existe, pero no se pudo guardar en Supabase.\n\n" +
+                error.message
+            );
+
+            return;
+
         }
 
+
+        console.log(
+            "🟢 SUSCRIPCIÓN GUARDADA CORRECTAMENTE"
+        );
+
+        alert(
+            "🔔 Notificaciones configuradas correctamente."
+        );
+
     } catch (err) {
-        console.error("Error al suscribir a notificaciones Push:", err);
+
+        console.error(
+            "❌ ERROR COMPLETO EN PUSH:",
+            err
+        );
+
+        alert(
+            "❌ Error configurando notificaciones:\n\n" +
+            err.message
+        );
+
     }
+
 }
-
-async function enableNotifications() {
-    if (!("Notification" in window)) {
-        alert("Tu navegador no soporta notificaciones.");
-        return;
-    }
-
-    if (Notification.permission === "granted") {
-        alert("✅ Las notificaciones ya están activadas en este navegador.");
-        await subscribeToPush();
-        return;
-    }
-
-    if (Notification.permission === "denied") {
-        alert("🚫 Las notificaciones están bloqueadas en tu navegador.\n\nPara activarlas, debes hacer clic en el candado 🔒 al lado de la URL y permitir los permisos de Notificaciones.");
-        updateNotificationButton();
-        return;
-    }
-
-    const permission = await Notification.requestPermission();
-
-    if (permission === "granted") {
-        updateNotificationButton();
-        await subscribeToPush();
-        alert("🔔 ¡Perfecto! Las notificaciones se han activado con éxito.");
-    } else {
-        updateNotificationButton();
-        alert("⚠️ No se pudieron activar las notificaciones porque se rechazó el permiso.");
-    }
-}
-
 
 // ============================================
 // CARGAR EVENTOS
