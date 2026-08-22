@@ -3086,6 +3086,37 @@ function subscribeToRealtime() {
 }
 
 // ============================================
+// REGISTRAR SERVICE WORKER
+// ============================================
+
+async function registerServiceWorker() {
+
+    if (!("serviceWorker" in navigator)) {
+        console.error("❌ Service Worker no soportado.");
+        return;
+    }
+
+    try {
+
+        const registration =
+            await navigator.serviceWorker.register("./sw.js");
+
+        console.log(
+            "✅ Service Worker registrado:",
+            registration.scope
+        );
+
+    } catch (error) {
+
+        console.error(
+            "❌ Error registrando Service Worker:",
+            error
+        );
+
+    }
+}
+
+// ============================================
 // INICIAR APLICACIÓN
 // ============================================
 
@@ -3108,7 +3139,10 @@ async function initApp() {
 
     // 3. Cargar perfil
     await loadProfile();
-
+    
+    // 4. REGISTRAR SERVICE WORKER
+    await registerServiceWorker();
+    
         // 4. Cargar eventos
 console.log("🔵 ANTES DE loadEvents()");
     await loadEvents();
