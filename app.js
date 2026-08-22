@@ -551,42 +551,163 @@ function updateNotificationButton() {
 // ============================================
 
 async function subscribeToPush() {
-    if (!("serviceWorker" in navigator) || !currentUser) return;
+
+    console.log("🔔 INICIANDO SUSCRIPCIÓN PUSH");
+
+    if (!("serviceWorker" in navigator)) {
+        alert("❌ Este navegador no soporta Service Worker.");
+        return false;
+    }
+
+    if (!currentUser) {
+        alert("❌ No hay usuario conectado.");
+        return false;
+    }
 
     try {
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
 
+        console.log("👤 Usuario:", currentUser.id);
+
+        const registration =
+            await navigator.serviceWorker.ready;
+
+        console.log(
+            "✅ Service Worker listo:",
+            registration
+        );
+
+        let subscription =
+            await registration.pushManager.getSubscription();
+
+        console.log(
+            "📱 Suscripción actual:",
+            subscription
+        );
+
+        // Crear una nueva si no existe
         if (!subscription) {
-            const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: convertedKey
-            });
+
+            console.log("🆕 Creando nueva suscripción...");
+
+            const convertedKey =
+                urlBase64ToUint8Array(
+                    VAPID_PUBLIC_KEY
+                );
+
+            subscription =
+                await registration.pushManager.subscribe({
+
+                    userVisibleOnly: true,
+
+                    applicationServerKey:
+                        convertedKey
+
+                });
+
+            console.log(
+                "✅ Nueva suscripción creada:",
+                subscription
+            );
         }
 
-        const jsonSub = subscription.toJSON();
+        const jsonSub =
+            subscription.toJSON();
 
-        const { error } = await supabaseClient
+        if (
+            !jsonSub.endpoint ||
+            !jsonSub.keys?.p256dh ||
+            !jsonSub.keys?.auth
+        ) {
+
+            console.error(
+                "❌ Suscripción incompleta:",
+                jsonSub
+            );
+
+            alert(
+                "❌ El navegador creó una suscripción incompleta."
+            );
+
+            return false;
+        }
+
+        console.log(
+            "📦 Guardando suscripción:",
+            jsonSub.endpoint
+        );
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
             .from("push_subscriptions")
+
             .upsert({
-                user_id: currentUser.id,
-                endpoint: jsonSub.endpoint,
-                p256dh: jsonSub.keys ? jsonSub.keys.p256dh : "",
-                auth: jsonSub.keys ? jsonSub.keys.auth : "",
-                updated_at: new Date().toISOString()
+
+                user_id:
+                    currentUser.id,
+
+                endpoint:
+                    jsonSub.endpoint,
+
+                p256dh:
+                    jsonSub.keys.p256dh,
+
+                auth:
+                    jsonSub.keys.auth,
+
+                updated_at:
+                    new Date().toISOString()
+
             }, {
-                onConflict: "user_id, endpoint"
-            });
+
+                onConflict:
+                    "user_id,endpoint"
+
+            })
+
+            .select();
 
         if (error) {
-            console.error("Error guardando suscripción en Supabase:", error);
-        } else {
-            console.log("Suscripción Push guardada correctamente en Supabase.");
+
+            console.error(
+                "❌ ERROR SUPABASE:",
+                error
+            );
+
+            alert(
+                "❌ No se pudo guardar la suscripción:\n\n" +
+                error.message
+            );
+
+            return false;
         }
 
+        console.log(
+            "🟢 SUSCRIPCIÓN GUARDADA:",
+            data
+        );
+
+        alert(
+            "✅ Notificaciones configuradas correctamente."
+        );
+
+        return true;
+
     } catch (err) {
-        console.error("Error al suscribir a notificaciones Push:", err);
+
+        console.error(
+            "❌ ERROR CREANDO SUSCRIPCIÓN:",
+            err
+        );
+
+        alert(
+            "❌ Error configurando notificaciones:\n\n" +
+            (err.message || err)
+        );
+
+        return false;
     }
 }
 
