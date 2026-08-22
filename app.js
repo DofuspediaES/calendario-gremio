@@ -2988,9 +2988,10 @@ async function initApp() {
     // 3. Cargar perfil
     await loadProfile();
 
-    // 4. Cargar eventos
+        // 4. Cargar eventos
+console.log("🔵 ANTES DE loadEvents()");
     await loadEvents();
-
+console.log("🟢 DESPUÉS DE loadEvents()");
     // 5. Mostrar zona horaria
     showTimezone();
 
