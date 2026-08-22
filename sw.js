@@ -21,7 +21,11 @@ self.addEventListener("activate", (event) => {
 // ============================================
 // NOTIFICACIÓN PUSH
 // ============================================
+
 self.addEventListener("push", (event) => {
+
+    console.log("🔔 PUSH RECIBIDO POR SERVICE WORKER");
+
     let data = {
         title: "⚔️ Calendario del Gremio",
         body: "Tienes una nueva actividad en el gremio.",
@@ -29,24 +33,66 @@ self.addEventListener("push", (event) => {
     };
 
     if (event.data) {
+
         try {
+
             data = event.data.json();
+
+            console.log(
+                "📨 Datos del Push:",
+                data
+            );
+
         } catch (error) {
-            data.body = event.data.text();
+
+            data.body =
+                event.data.text();
+
+            console.log(
+                "📨 Push recibido como texto:",
+                data.body
+            );
+
         }
+
     }
 
     const options = {
-        body: data.body,
-        icon: data.icon || "/icon-192.png",
-        badge: data.icon || "/icon-192.png",
-        vibrate: [200, 100, 200],
-        data: data.data || {}
+
+        body:
+            data.body,
+
+        icon:
+            data.icon ||
+            "/icon-192.png",
+
+        badge:
+            data.icon ||
+            "/icon-192.png",
+
+        vibrate:
+            [200, 100, 200],
+
+        data:
+            data.data ||
+            {}
+
     };
 
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
+    console.log(
+        "🔔 Mostrando notificación:",
+        data.title
     );
+
+    event.waitUntil(
+
+        self.registration.showNotification(
+            data.title,
+            options
+        )
+
+    );
+
 });
 
 // ============================================
