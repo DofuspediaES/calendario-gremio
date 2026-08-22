@@ -3009,6 +3009,8 @@ console.log("🟢 DESPUÉS DE loadEvents()");
 // ARRANCAR CUANDO CARGUE LA PÁGINA
 // ============================================
 
+console.log("✅ app.js llegó hasta el final");
+
 document.addEventListener("DOMContentLoaded", () => {
     initApp();
 });
