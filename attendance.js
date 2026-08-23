@@ -74,7 +74,6 @@
             const { error: confirmError } = await db.from("events").update({ attendance_confirmed: true }).eq("id", event.id);
             if (confirmError) {
                 console.error("❌ Error confirmando la actividad:", confirmError);
-                alert("Se guardaron los asistentes, pero no se pudo confirmar la actividad.");
                 button.disabled = false;
                 button.textContent = "Guardar asistencia";
                 return;
@@ -89,9 +88,17 @@
         const list = document.getElementById("eventsList");
         if (!list || !ownedEvents.length) return;
         list.querySelectorAll(".event-card").forEach(card => {
-            if (card.querySelector(".attendance-button")) return;
             const event = findEventForCard(card);
             if (!event) return;
+            const existing = card.querySelector(".attendance-button");
+            if (existing) {
+                // index.html todavía contiene una versión antigua del botón.
+                // La reutilizamos, pero sustituimos su comportamiento por esta versión.
+                existing.onclick = null;
+                existing.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
+                existing.addEventListener("click", () => openAttendance(event), { once: true });
+                return;
+            }
             const actions = card.querySelector(".event-actions");
             if (!actions) return;
             const button = document.createElement("button");
