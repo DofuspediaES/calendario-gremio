@@ -63,6 +63,8 @@ async function start(){
  if(list)new MutationObserver(()=>setTimeout(inject,80)).observe(list,{childList:true,subtree:true});
  setInterval(inject,1000);
  if(typeof window.renderEvents==="function"){const old=window.renderEvents;window.renderEvents=function(){const r=old.apply(this,arguments);setTimeout(inject,120);return r}}
+ // Cargar las estadísticas generales sin añadir datos nuevos a Supabase.
+ const stats=document.createElement("script");stats.src="stats.js?v=1";stats.async=true;document.body.appendChild(stats);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start);else start();
 })();
