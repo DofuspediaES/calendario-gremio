@@ -5,6 +5,7 @@
     const SUPABASE_KEY = "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let ownedEvents = [];
+    let observerStarted = false;
 
     function esc(value) {
         return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
@@ -87,23 +88,28 @@
     function injectButtons() {
         const list = document.getElementById("eventsList");
         if (!list || !ownedEvents.length) return;
+
         list.querySelectorAll(".event-card").forEach(card => {
             const event = findEventForCard(card);
             if (!event) return;
+
             const existing = card.querySelector(".attendance-button");
             if (existing) {
-                // index.html todavía contiene una versión antigua del botón.
-                // La reutilizamos, pero sustituimos su comportamiento por esta versión.
-                existing.onclick = null;
-                existing.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
-                existing.addEventListener("click", () => openAttendance(event), { once: true });
+                const label = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
+                if (existing.textContent !== label) existing.textContent = label;
+                if (existing.dataset.attendanceBound !== "true") {
+                    existing.dataset.attendanceBound = "true";
+                    existing.addEventListener("click", () => openAttendance(event));
+                }
                 return;
             }
+
             const actions = card.querySelector(".event-actions");
             if (!actions) return;
             const button = document.createElement("button");
             button.type = "button";
             button.className = "attendance-button";
+            button.dataset.attendanceBound = "true";
             button.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
             button.addEventListener("click", () => openAttendance(event));
             actions.appendChild(button);
@@ -113,11 +119,15 @@
     async function start() {
         await loadOwnedEvents();
         injectButtons();
+
         const list = document.getElementById("eventsList");
-        if (list) new MutationObserver(injectButtons).observe(list, { childList: true, subtree: true });
-        setTimeout(injectButtons, 500);
-        setTimeout(injectButtons, 1500);
-        setTimeout(injectButtons, 3000);
+        if (list && !observerStarted) {
+            observerStarted = true;
+            new MutationObserver(() => {
+                // Deja que el render de la página termine antes de revisar las tarjetas.
+                requestAnimationFrame(injectButtons);
+            }).observe(list, { childList: true, subtree: true });
+        }
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
