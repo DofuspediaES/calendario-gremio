@@ -41,7 +41,7 @@
 
         const modal = document.createElement("div");
         modal.className = "attendance-modal";
-        modal.innerHTML = `<div class="attendance-panel"><h2>✅ Confirmar asistencia</h2><div class="attendance-subtitle">${esc(event.name)}<br>Marca quién realmente asistió.</div><div class="attendance-list">${rows.length ? rows.map(row => `<label class="attendance-row"><input type="checkbox" data-user-id="${esc(row.user_id)}" ${row.attended === true ? "checked" : ""}><span>${esc(row.player_name || "Jugador")}</span></label>`).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}</div><div class="attendance-actions"><button type="button" class="attendance-cancel">Cancelar</button><button type="button" class="attendance-save">Guardar asistencia</button></div></div>`;
+        modal.innerHTML = `<div class="attendance-panel"><h2>👥 Confirmar asistencia</h2><div class="attendance-subtitle">${esc(event.name)}<br>Marca solamente a quienes <strong>NO asistieron</strong>.</div><div class="attendance-list">${rows.length ? rows.map(row => `<label class="attendance-row"><input type="checkbox" data-user-id="${esc(row.user_id)}" ${row.attended === false ? "checked" : ""}><span>${esc(row.player_name || "Jugador")}</span></label>`).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}</div><div class="attendance-actions"><button type="button" class="attendance-cancel">Cancelar</button><button type="button" class="attendance-save">Guardar asistencia</button></div></div>`;
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
@@ -55,7 +55,7 @@
             let failed = false;
 
             for (const input of [...modal.querySelectorAll("input[data-user-id]")]) {
-                const { error: updateError } = await db.from("event_participants").update({ attended: input.checked }).eq("event_id", event.id).eq("user_id", input.dataset.userId);
+                const { error: updateError } = await db.from("event_participants").update({ attended: !input.checked }).eq("event_id", event.id).eq("user_id", input.dataset.userId);
                 if (updateError) {
                     console.error("❌ Error guardando asistencia:", updateError);
                     failed = true;
@@ -96,7 +96,7 @@
             const button = document.createElement("button");
             button.type = "button";
             button.className = "attendance-button";
-            button.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "✅ Confirmar asistencia";
+            button.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
             button.addEventListener("click", () => openAttendance(event));
             actions.appendChild(button);
         });
