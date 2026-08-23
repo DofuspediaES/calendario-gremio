@@ -2,6 +2,7 @@
 "use strict";
 const S="https://nmmetzityubqbrbpibee.supabase.co",K="sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX",db=window.supabase.createClient(S,K);
 let ownedEvents=[];
+let historyEvents=[];
 let ownerId=null;
 const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;/g").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
 function past(e){return typeof window.isPastEvent==="function"?window.isPastEvent(e.event_date,e.event_time,e.timezone):new Date(`${e.event_date}T${e.event_time||"23:59"}`).getTime()<Date.now()}
@@ -9,9 +10,10 @@ async function load(){
  const {data:{session}}=await db.auth.getSession();
  if(!session?.user)return;
  ownerId=session.user.id;
- const {data,error}=await db.from("events").select("id,name,user_id,event_date,event_time,timezone,attendance_confirmed").eq("user_id",ownerId);
- if(error){console.error("❌ Error cargando actividades propias:",error);return;}
- ownedEvents=(data||[]).filter(past);
+ const {data,error}=await db.from("events").select("id,name,user_id,event_date,event_time,timezone,attendance_confirmed");
+ if(error){console.error("❌ Error cargando actividades:",error);return;}
+ historyEvents=data||[];
+ ownedEvents=historyEvents.filter(e=>e.user_id===ownerId&&past(e));
 }
 function getCardEventId(card){
  const direct=card.dataset.eventId||card.getAttribute("data-event-id");
@@ -76,8 +78,8 @@ function paginateHistory(){
  }
  const cards=[...list.querySelectorAll(".event-card")];
  if(!cards.length){if(pager)pager.remove();return;}
- const getEvent=id=>Array.isArray(window.events)?window.events.find(e=>Number(e.id)===Number(id)):null;
- // Ordenar de más reciente a más antiguo.
+ const getEvent=id=>historyEvents.find(e=>Number(e.id)===Number(id))||null;
+ // Ordenar de más reciente a más antiguo usando la fecha y hora reales de Supabase.
  cards.sort((a,b)=>{
    const ea=getEvent(getCardEventId(a)),eb=getEvent(getCardEventId(b));
    const da=ea?new Date(`${ea.event_date}T${ea.event_time||"23:59"}`).getTime():0;
