@@ -9,6 +9,8 @@
     <link rel="icon" type="image/png" href="./favicon.png">
     <style>
         .header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}.header-notification-button{border:1px solid var(--border-light);border-radius:var(--radius-small);background:#292929;color:var(--text);padding:10px 14px;font-size:13px;font-weight:bold;cursor:pointer}.header-notification-button:hover{background:var(--orange);color:#171717;border-color:var(--orange)}.notification-info-button{width:38px;height:38px;border:1px solid var(--border-light);border-radius:50%;background:#292929;color:var(--text);font-weight:bold;cursor:pointer}.notification-info-button:hover{background:var(--orange);color:#171717;border-color:var(--orange)}.notifications-modal-content{max-width:520px}.notifications-modal-content h2{margin-top:0}.notifications-list{margin:18px 0;padding-left:22px;line-height:1.8;color:var(--text-secondary)}.notifications-note{margin-top:18px;padding:12px;border-radius:var(--radius-small);background:#191919;border:1px solid var(--border);color:var(--text-secondary);font-size:12px;line-height:1.5}.notifications-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}@media(max-width:650px){.header{padding:14px}.header-title-container{gap:10px}.guild-shield{width:58px;height:58px}.header h1{font-size:18px}.header p{font-size:11px}.header-actions{gap:5px}.header-notification-button{padding:8px 9px;font-size:11px}.today-button{padding:8px 9px;font-size:11px}.notification-info-button{width:34px;height:34px}}
+        .attendance-button{margin-top:10px;background:#2f8f46;color:#fff;border:none;padding:7px 12px;border-radius:5px;cursor:pointer;font-weight:bold}.attendance-button:hover{filter:brightness(1.12)}
+        .attendance-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:100000;padding:16px;box-sizing:border-box}.attendance-panel{background:#242424;color:#fff;width:100%;max-width:440px;border:1px solid #555;border-radius:12px;padding:22px;box-sizing:border-box;box-shadow:0 15px 50px rgba(0,0,0,.55)}.attendance-panel h2{margin:0 0 8px}.attendance-subtitle{color:#aaa;font-size:13px;margin-bottom:18px}.attendance-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #3b3b3b}.attendance-row input{width:18px;height:18px}.attendance-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}.attendance-actions button{padding:9px 13px;border-radius:6px;border:0;cursor:pointer;font-weight:bold}.attendance-cancel{background:#444;color:#fff}.attendance-save{background:#2f8f46;color:#fff}
     </style>
 </head>
 <body>
@@ -34,57 +36,78 @@
     const p=window.supabase.createClient(S,K);
 
     async function syncDiscord(eventId, userId, type){
-        const {data,error}=await p.functions.invoke("discord-event",{
-            body:{action:"web_sync_participant",event_id:eventId,user_id:userId,type:type}
-        });
-        if(error){
-            console.error("⚠️ Error sincronizando participación con Discord:",error);
-            return false;
-        }
-        console.log("🔄 Discord sincronizado:",data);
-        return true;
+        const {data,error}=await p.functions.invoke("discord-event",{body:{action:"web_sync_participant",event_id:eventId,user_id:userId,type:type}});
+        if(error){console.error("⚠️ Error sincronizando participación con Discord:",error);return false;}
+        console.log("🔄 Discord sincronizado:",data);return true;
     }
 
     window.joinEvent=async function(eventId){
         if(!currentUser){alert("No estás conectado.");return;}
-        const event=events.find(e=>e.id===eventId);
-        if(!event)return;
+        const event=events.find(e=>e.id===eventId);if(!event)return;
         if(getEventParticipants(eventId).length>=event.capacity){alert("Este evento está completo.");return;}
         if(isJoined(eventId)){alert("Ya estás apuntado.");return;}
-
         const playerName=currentProfile?.player_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.username||"Jugador";
         const {error:dbError}=await p.from("event_participants").upsert({event_id:eventId,user_id:currentUser.id,player_name:playerName,discord_id:currentProfile?.discord_id||null},{onConflict:"event_id,user_id"});
         if(dbError){console.error("❌ Error guardando en BD:",dbError);alert("No se pudo registrar tu participación.");return;}
-
-        try{
-            const {error}=await p.functions.invoke("send-push",{body:{type:"participant_joined",event_id:eventId,participant_user_id:currentUser.id}});
-            if(error)console.error("⚠️ Error enviando notificación de inscripción:",error);
-        }catch(error){console.error("⚠️ Error llamando a send-push:",error);}
-
-        await syncDiscord(eventId,currentUser.id,"join");
-        await loadEvents();
+        try{const {error}=await p.functions.invoke("send-push",{body:{type:"participant_joined",event_id:eventId,participant_user_id:currentUser.id}});if(error)console.error("⚠️ Error enviando notificación de inscripción:",error);}catch(error){console.error("⚠️ Error llamando a send-push:",error);}
+        await syncDiscord(eventId,currentUser.id,"join");await loadEvents();
     };
 
     window.leaveEvent=async function(eventId){
         if(!currentUser)return;
-
         const {data:participation}=await p.from("event_participants").select("player_name").eq("event_id",eventId).eq("user_id",currentUser.id).maybeSingle();
         const participantName=participation?.player_name||currentProfile?.player_name||"Un jugador";
-
         const {error:dbError}=await p.from("event_participants").delete().eq("event_id",eventId).eq("user_id",currentUser.id);
         if(dbError){console.error("❌ Error al retirarse:",dbError);alert("No se pudo cancelar la inscripción.");return;}
-
         await syncDiscord(eventId,currentUser.id,"leave");
-
-        try{
-            const {error}=await p.functions.invoke("send-push",{body:{type:"participant_left",event_id:eventId,participant_user_id:currentUser.id,participant_name:participantName}});
-            if(error)console.error("⚠️ Error enviando notificación de retiro:",error);
-        }catch(error){console.error("⚠️ Error llamando a send-push:",error);}
-
+        try{const {error}=await p.functions.invoke("send-push",{body:{type:"participant_left",event_id:eventId,participant_user_id:currentUser.id,participant_name:participantName}});if(error)console.error("⚠️ Error enviando notificación de retiro:",error);}catch(error){console.error("⚠️ Error llamando a send-push:",error);}
         await loadEvents();
     };
-
     console.log("🔄 Sincronización WEB ↔ DISCORD preparada.");
+})();
+</script>
+<script>
+(function(){
+    const S="https://nmmetzityubqbrbpibee.supabase.co";
+    const K="sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+    const db=window.supabase.createClient(S,K);
+    const addButtons=()=>{
+        if(!window.eventsList||!window.events||!window.currentUser)return;
+        document.querySelectorAll("#eventsList .event-card").forEach(card=>{
+            if(card.querySelector(".attendance-button"))return;
+            const title=card.querySelector("h3");
+            const event=window.events.find(e=>e.name===(title?.textContent||"").trim());
+            if(!event)return;
+            const past=typeof isPastEvent==="function"&&isPastEvent(event.event_date,event.event_time,event.timezone);
+            if(!past||event.user_id!==window.currentUser.id)return;
+            const actions=card.querySelector(".event-actions");
+            if(!actions)return;
+            const b=document.createElement("button");b.className="attendance-button";b.textContent="✅ Confirmar asistencia";b.onclick=()=>openAttendance(event);actions.appendChild(b);
+        });
+    };
+    async function openAttendance(event){
+        const {data:rows,error}=await db.from("event_participants").select("user_id,player_name,attended").eq("event_id",event.id).order("player_name");
+        if(error){console.error(error);alert("No se pudieron cargar los participantes.");return;}
+        const modal=document.createElement("div");modal.className="attendance-modal";
+        const rowsHtml=(rows||[]).map((r,i)=>`<label class="attendance-row"><input type="checkbox" data-user="${r.user_id}" ${r.attended===true?"checked":""}><span>${escapeHTML(r.player_name||"Jugador")}</span></label>`).join("");
+        modal.innerHTML=`<div class="attendance-panel"><h2>✅ Confirmar asistencia</h2><div class="attendance-subtitle">${escapeHTML(event.name)}<br>Marca quién realmente asistió.</div><div>${rowsHtml||"<div style='color:#999;padding:10px 0'>No hay participantes.</div>"}</div><div class="attendance-actions"><button class="attendance-cancel">Cancelar</button><button class="attendance-save">Guardar asistencia</button></div></div>`;
+        document.body.appendChild(modal);
+        modal.querySelector(".attendance-cancel").onclick=()=>modal.remove();
+        modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
+        modal.querySelector(".attendance-save").onclick=async()=>{
+            const checks=[...modal.querySelectorAll("input[data-user]")];
+            const save=modal.querySelector(".attendance-save");save.disabled=true;save.textContent="Guardando...";
+            for(const input of checks){
+                const {error}=await db.from("event_participants").update({attended:input.checked}).eq("event_id",event.id).eq("user_id",input.dataset.user);
+                if(error){console.error(error);alert("Hubo un error guardando una asistencia.");save.disabled=false;save.textContent="Guardar asistencia";return;}
+            }
+            modal.remove();
+            alert("✅ Asistencia guardada.");
+        };
+    }
+    const observer=new MutationObserver(addButtons);observer.observe(document.getElementById("eventsList"),{childList:true,subtree:true});
+    window.addEventListener("load",()=>setTimeout(addButtons,500));
+    setTimeout(addButtons,1000);
 })();
 </script>
 </body></html>
