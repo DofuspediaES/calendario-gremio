@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estadísticas • Calendario del Gremio</title>
+<style>
+:root{--bg:#171717;--card:#222;--card2:#1d1d1d;--border:#363636;--text:#eee;--muted:#999;--orange:#f28c28;--green:#3fb950}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}.page{width:min(1000px,94%);margin:24px auto 50px}.header{display:flex;align-items:center;gap:15px;padding:18px;background:linear-gradient(135deg,#242424,#1e1e1e);border:1px solid var(--border);border-radius:12px}.shield{width:58px;height:58px;object-fit:contain;border-radius:8px}.header h1{margin:0;font-size:24px}.header p{margin:5px 0 0;color:var(--muted)}.back{margin-left:auto;color:var(--text);text-decoration:none;border:1px solid var(--border);padding:9px 12px;border-radius:7px}.back:hover{border-color:var(--orange);color:var(--orange)}.section-title{margin:28px 0 12px}.section-title h2{margin:0;font-size:20px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:17px}.stat .icon{font-size:20px}.stat .value{font-size:28px;font-weight:bold;margin-top:8px}.stat .label{font-size:12px;color:var(--muted);margin-top:3px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}.panel h3{margin:0 0 15px}.row{display:flex;align-items:center;gap:10px;margin:11px 0}.rank{width:28px;color:var(--orange);font-weight:bold}.name{min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-wrap{flex:1;height:10px;background:#303030;border-radius:10px;overflow:hidden}.bar{height:100%;background:var(--orange);border-radius:10px}.count{width:42px;text-align:right;font-weight:bold}.empty{color:var(--muted);font-size:13px}.footer{text-align:center;color:#666;font-size:12px;margin-top:22px}.loading{color:var(--muted)}@media(max-width:700px){.cards{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.header{align-items:flex-start}.header h1{font-size:19px}.header p{font-size:12px}.back{font-size:12px}.name{min-width:80px}}@media(max-width:420px){.cards{grid-template-columns:1fr 1fr}.shield{width:45px;height:45px}.header{gap:10px}.back{display:none}.stat .value{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="page">
+<header class="header"><img src="escudo.jpg" class="shield" alt="Escudo Aventuwewos del Wey Wabbit"><div><h1>📊 Estadísticas del Gremio</h1><p>Aventuwewos del Wey Wabbit</p></div><a class="back" href="./">← Calendario</a></header>
+<section><div class="section-title"><h2>Resumen</h2></div><div class="cards"><div class="stat"><div class="icon">📅</div><div id="events" class="value">—</div><div class="label">Actividades creadas</div></div><div class="stat"><div class="icon">👥</div><div id="players" class="value">—</div><div class="label">Jugadores participantes</div></div><div class="stat"><div class="icon">🤝</div><div id="participations" class="value">—</div><div class="label">Participaciones</div></div><div class="stat"><div class="icon">📈</div><div id="average" class="value">—</div><div class="label">Promedio por actividad</div></div></div></section>
+<div class="grid"><section class="panel"><h3>🏆 Jugadores con más participaciones</h3><div id="ranking" class="loading">Cargando...</div></section><section class="panel"><h3>🎯 Actividades por tipo</h3><div id="types" class="loading">Cargando...</div></section></div>
+<section class="panel" style="margin-top:14px"><h3>📅 Actividades por mes</h3><div id="months" class="loading">Cargando...</div></section>
+<div class="footer">Datos actualizados directamente desde el calendario.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://nmmetzityubqbrbpibee.supabase.co";
+const SUPABASE_KEY="sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const labels={dungeon:"🗝️ Mazmorra",quest:"🗺️ Misión",infinite_dreams:"🌀 Sueños Infinitos",commission:"📦 Encargo",raid:"⚔️ Raid",farm:"💰 Drop/Farm",wanted:"📜 Busca y Captura",other:"🎲 Otro"};
+const esc=s=>String(s??"").replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
+async function loadStats(){
+ const [{data:events,error:e1},{data:parts,error:e2}]=await Promise.all([
+  db.from("events").select("id,type,event_date,capacity"),
+  db.from("event_participants").select("user_id,player_name,event_id")
+ ]);
+ if(e1||e2){console.error(e1||e2);document.querySelector('.footer').textContent='No se pudieron cargar las estadísticas.';return;}
+ const ev=events||[], pa=parts||[];
+ document.getElementById('events').textContent=ev.length;
+ document.getElementById('players').textContent=new Set(pa.map(p=>p.user_id)).size;
+ document.getElementById('participations').textContent=pa.length;
+ document.getElementById('average').textContent=ev.length?(pa.length/ev.length).toFixed(1):'0';
+ const playerMap={};pa.forEach(p=>{const key=p.user_id||p.player_name||'unknown';if(!playerMap[key])playerMap[key]={name:p.player_name||'Jugador',count:0};playerMap[key].count++});
+ const ranking=Object.values(playerMap).sort((a,b)=>b.count-a.count).slice(0,10),maxP=ranking[0]?.count||1;
+ document.getElementById('ranking').innerHTML=ranking.length?ranking.map((p,i)=>`<div class="row"><div class="rank">${i+1}</div><div class="name">${esc(p.name)}</div><div class="bar-wrap"><div class="bar" style="width:${p.count/maxP*100}%"></div></div><div class="count">${p.count}</div></div>`).join(''):'<div class="empty">Todavía no hay participaciones.</div>';
+ const typeMap={};ev.forEach(e=>typeMap[e.type]=(typeMap[e.type]||0)+1);const types=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]);const maxT=types[0]?.[1]||1;
+ document.getElementById('types').innerHTML=types.length?types.map(([t,c])=>`<div class="row"><div class="name">${esc(labels[t]||t)}</div><div class="bar-wrap"><div class="bar" style="width:${c/maxT*100}%"></div></div><div class="count">${c}</div></div>`).join(''):'<div class="empty">Todavía no hay actividades.</div>';
+ const monthMap={};ev.forEach(e=>{if(!e.event_date)return;const [y,m]=e.event_date.split('-');const key=`${y}-${m}`;monthMap[key]=(monthMap[key]||0)+1});const months=Object.entries(monthMap).sort((a,b)=>a[0].localeCompare(b[0]));const maxM=months.reduce((x,[,c])=>Math.max(x,c),1);const fmt=new Intl.DateTimeFormat('es-PE',{month:'long',year:'numeric'});
+ document.getElementById('months').innerHTML=months.length?months.map(([k,c])=>{const d=new Date(`${k}-01T12:00:00`);return `<div class="row"><div class="name" style="min-width:145px;text-transform:capitalize">${fmt.format(d)}</div><div class="bar-wrap"><div class="bar" style="width:${c/maxM*100}%"></div></div><div class="count">${c}</div></div>`}).join(''):'<div class="empty">Todavía no hay actividades.</div>';
+}
+loadStats();
+</script>
+</body>
+</html>
