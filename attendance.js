@@ -71,7 +71,6 @@
             }
 
             close();
-            alert("✅ Asistencia guardada correctamente.");
         });
     }
 
