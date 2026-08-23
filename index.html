@@ -27,5 +27,64 @@
 <div id="notificationsInfoModal" class="modal hidden"><div class="modal-content notifications-modal-content"><button id="closeNotificationsInfo" class="close-button">×</button><h2>🔔 Notificaciones del gremio</h2><p>Activa las notificaciones para enterarte de lo importante aunque no estés mirando el calendario.</p><ul class="notifications-list"><li>🆕 Cuando se crea una nueva actividad.</li><li>🟢 Cuando alguien se apunta a una actividad en la que participas.</li><li>🔴 Cuando alguien se retira de una actividad en la que participas.</li><li>✏️ Cuando se modifica una actividad que te afecta.</li><li>❌ Cuando se cancela una actividad en la que participas.</li><li>⏰ Cuando se acerca una actividad a la que estás apuntado.</li><li>🚨 Cuando una actividad comienza.</li></ul><div class="notifications-note"><strong>¿Dónde aparecen?</strong><br>En las notificaciones de tu navegador, incluso si tienes el calendario abierto en otra pestaña. Las notificaciones se activan por dispositivo, así que puedes tenerlas activadas en tu PC y/o celular por separado.</div><div class="notifications-modal-actions"><button id="closeNotificationsInfoButton" type="button" class="profile-button">Cerrar</button><button id="notificationsInfoActivate" type="button" class="submit-button">🔔 Activar notificaciones</button></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script>
 <script>(function(){const m=document.getElementById("notificationsInfoModal"),i=document.getElementById("notificationInfoButton"),c=document.getElementById("closeNotificationsInfo"),c2=document.getElementById("closeNotificationsInfoButton"),a=document.getElementById("notificationsInfoActivate"),n=document.getElementById("notificationButton");const close=()=>m?.classList.add("hidden");i?.addEventListener("click",()=>m?.classList.remove("hidden"));c?.addEventListener("click",close);c2?.addEventListener("click",close);m?.addEventListener("click",e=>{if(e.target===m)close()});a?.addEventListener("click",()=>{close();n?.click()})})();</script>
-<script>(function(){const S="https://nmmetzityubqbrbpibee.supabase.co",K="sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX",p=window.supabase.createClient(S,K);const w=setInterval(()=>{if(typeof window.leaveEvent!=="function")return;clearInterval(w);const o=window.leaveEvent;window.leaveEvent=async function(id){try{const{data:s}=await p.auth.getSession(),u=s?.session?.user?.id;if(!u)return o(id);const{data:x,error:e}=await p.from("event_participants").select("player_name").eq("event_id",id).eq("user_id",u).maybeSingle();if(e||!x)return o(id);const name=x.player_name||"Un jugador",r=await o(id),z=await p.functions.invoke("send-push",{body:{type:"participant_left",event_id:id,participant_user_id:u,participant_name:name}});if(z.error)console.error("⚠️ Error enviando notificación de retiro:",z.error);else console.log("🔴 Notificación de retiro enviada:",z.data);return r}catch(e){console.error("⚠️ Error en notificación de retiro:",e);return o(id)}};console.log("🔴 Notificación de retiro preparada.")},100)})();</script>
+<script>
+(function(){
+    const S="https://nmmetzityubqbrbpibee.supabase.co";
+    const K="sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+    const p=window.supabase.createClient(S,K);
+
+    async function syncDiscord(eventId, userId, type){
+        const {data,error}=await p.functions.invoke("discord-event",{
+            body:{action:"web_sync_participant",event_id:eventId,user_id:userId,type:type}
+        });
+        if(error){
+            console.error("⚠️ Error sincronizando participación con Discord:",error);
+            return false;
+        }
+        console.log("🔄 Discord sincronizado:",data);
+        return true;
+    }
+
+    window.joinEvent=async function(eventId){
+        if(!currentUser){alert("No estás conectado.");return;}
+        const event=events.find(e=>e.id===eventId);
+        if(!event)return;
+        if(getEventParticipants(eventId).length>=event.capacity){alert("Este evento está completo.");return;}
+        if(isJoined(eventId)){alert("Ya estás apuntado.");return;}
+
+        const playerName=currentProfile?.player_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.username||"Jugador";
+        const {error:dbError}=await p.from("event_participants").upsert({event_id:eventId,user_id:currentUser.id,player_name:playerName,discord_id:currentProfile?.discord_id||null},{onConflict:"event_id,user_id"});
+        if(dbError){console.error("❌ Error guardando en BD:",dbError);alert("No se pudo registrar tu participación.");return;}
+
+        try{
+            const {error}=await p.functions.invoke("send-push",{body:{type:"participant_joined",event_id:eventId,participant_user_id:currentUser.id}});
+            if(error)console.error("⚠️ Error enviando notificación de inscripción:",error);
+        }catch(error){console.error("⚠️ Error llamando a send-push:",error);}
+
+        await syncDiscord(eventId,currentUser.id,"join");
+        await loadEvents();
+    };
+
+    window.leaveEvent=async function(eventId){
+        if(!currentUser)return;
+
+        const {data:participation}=await p.from("event_participants").select("player_name").eq("event_id",eventId).eq("user_id",currentUser.id).maybeSingle();
+        const participantName=participation?.player_name||currentProfile?.player_name||"Un jugador";
+
+        const {error:dbError}=await p.from("event_participants").delete().eq("event_id",eventId).eq("user_id",currentUser.id);
+        if(dbError){console.error("❌ Error al retirarse:",dbError);alert("No se pudo cancelar la inscripción.");return;}
+
+        await syncDiscord(eventId,currentUser.id,"leave");
+
+        try{
+            const {error}=await p.functions.invoke("send-push",{body:{type:"participant_left",event_id:eventId,participant_user_id:currentUser.id,participant_name:participantName}});
+            if(error)console.error("⚠️ Error enviando notificación de retiro:",error);
+        }catch(error){console.error("⚠️ Error llamando a send-push:",error);}
+
+        await loadEvents();
+    };
+
+    console.log("🔄 Sincronización WEB ↔ DISCORD preparada.");
+})();
+</script>
 </body></html>
