@@ -3,259 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Calendario del Gremio</title>
-
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="./favicon.png">
 </head>
-
 <body>
-
     <div class="app">
-
-        <!-- ENCABEZADO -->
 <header class="header">
-
     <div class="header-title-container">
         <img src="escudo.jpg" alt="Escudo Aventuwewos del Wey Wabbit" class="guild-shield">
-        
-        <div>
-            <h1>⚔️ Calendario del Gremio</h1>
-            <p>Aventuwewos del Wey Wabbit</p>
-        </div>
+        <div><h1>⚔️ Calendario del Gremio</h1><p>Aventuwewos del Wey Wabbit</p></div>
     </div>
-
-    <button id="todayButton" class="today-button">
-        Hoy
-    </button>
-
+    <button id="todayButton" class="today-button">Hoy</button>
 </header>
-
-        <!-- NAVEGACIÓN DEL MES -->
-        <div class="calendar-navigation">
-            <button id="previousMonth" class="nav-button">‹</button>
-            <h2 id="monthTitle">Agosto 2026</h2>
-            <button id="nextMonth" class="nav-button">›</button>
-        </div>
-
-        <!-- CALENDARIO -->
-        <main>
-            <div class="weekdays">
-                <div>LUN</div>
-                <div>MAR</div>
-                <div>MIÉ</div>
-                <div>JUE</div>
-                <div>VIE</div>
-                <div>SÁB</div>
-                <div>DOM</div>
-            </div>
-
-            <div id="calendar" class="calendar">
-                <!-- JavaScript genera los días -->
-            </div>
-        </main>
-
-        <!-- INFORMACIÓN DE ZONA HORARIA -->
-        <div class="timezone">
-            🕐 Tu hora local:
-            <strong id="timezoneName"></strong>
-        </div>
-
-        <!-- PERFIL DEL JUGADOR -->
-        <div class="player-profile">
-            <div class="player-info">
-                <span id="playerNameDisplay">
-                    👤 Cargando jugador...
-                </span>
-            </div>
-
-            <div class="player-actions">
-                <button id="changeNameButton" class="profile-button">
-                    ✏️ Cambiar nombre
-                </button>
-
-                <button id="discordButton" class="discord-button">
-                    🎮 Conectar Discord
-                </button>
-
-                <button id="notificationButton" class="notification-button">
-                    🔔 Activar notificaciones
-                </button>
-            </div>
-        </div>
-
-        <!-- PANEL DE EVENTOS -->
-        <section class="events-section">
-            <div class="section-title">
-                <h2>📋 Próximas actividades</h2>
-
-                <button type="button" class="submit-button" id="addEventButton">
-                    Crear actividad
-                </button>
-            </div>
-
-            <!-- CONTROLES DE FILTRADO Y PESTAÑAS -->
-            <div class="filters-bar" style="margin: 20px 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
-                <div class="tabs-group" style="display: flex; gap: 8px;">
-                    <button class="filter-tab active" data-view="upcoming">📅 Próximos</button>
-                    <button class="filter-tab" data-view="my_events">⭐ Mis Eventos</button>
-                    <button class="filter-tab" data-view="past">📜 Histórico</button>
-                </div>
-
-                <div class="category-select-wrapper">
-                    <select id="categoryFilterSelect" style="padding: 8px 12px; border-radius: 6px; cursor: pointer;">
-                        <option value="all">🎯 Todas las actividades</option>
-                        <option value="dungeon">🗝️ Mazmorras</option>
-                        <option value="quest">🗺️ Misiones</option>
-                        <option value="infinite_dreams">🌀 Sueños Infinitos</option>
-                        <option value="commission">📦 Encargo</option>
-                        <option value="raid">⚔️ Raids</option>
-                        <option value="farm">💰 Drop/Farm</option>
-                        <option value="wanted">📜 Busca y Captura</option>
-                        <option value="other">🎲 Otros</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="eventsList">
-                <!-- JavaScript coloca los eventos aquí -->
-            </div>
-        </section>
+<div class="calendar-navigation">
+    <button id="previousMonth" class="nav-button">‹</button>
+    <h2 id="monthTitle">Agosto 2026</h2>
+    <button id="nextMonth" class="nav-button">›</button>
+</div>
+<main>
+    <div class="weekdays"><div>LUN</div><div>MAR</div><div>MIÉ</div><div>JUE</div><div>VIE</div><div>SÁB</div><div>DOM</div></div>
+    <div id="calendar" class="calendar"></div>
+</main>
+<div class="timezone">🕐 Tu hora local: <strong id="timezoneName"></strong></div>
+<div class="player-profile">
+    <div class="player-info"><span id="playerNameDisplay">👤 Cargando jugador...</span></div>
+    <div class="player-actions">
+        <button id="changeNameButton" class="profile-button">✏️ Cambiar nombre</button>
+        <button id="discordButton" class="discord-button">🎮 Conectar Discord</button>
+        <button id="notificationButton" class="notification-button">🔔 Activar notificaciones</button>
     </div>
-
-    <!-- MODAL PARA CREAR EVENTO -->
-    <div id="eventModal" class="modal hidden">
-        <div class="modal-content">
-            <button id="closeModal" class="close-button">×</button>
-
-            <h2>➕ Crear actividad</h2>
-
-            <form id="eventForm">
-                <label>
-                    Nombre de la actividad
-                    <input type="text" id="eventName" placeholder="Ej: RAID Conde Kontatrás" required>
-                </label>
-
-                <label>
-                    Tipo
-                    <select id="eventType" required>
-                        <option value="dungeon">🗝️ Mazmorra</option>
-                        <option value="quest">🗺️ Misiones</option>
-                        <option value="infinite_dreams">🌀 Sueños Infinitos</option>
-                        <option value="commission">📦 Encargo</option>
-                        <option value="raid">⚔️ Raid</option>
-                        <option value="farm">💰 Drop/Farm</option>
-                        <option value="wanted">📜 Busca y Captura</option>
-                        <option value="other">🎲 Otro</option>
-                    </select>
-                </label>
-
-                <div class="form-row">
-                    <label>
-                        Fecha
-                        <input type="date" id="eventDate" required>
-                    </label>
-
-                    <label>
-                        Hora
-                        <input type="time" id="eventTime" required>
-                    </label>
-                </div>
-
-                <label>
-                    Cupos
-                    <input type="number" id="eventCapacity" min="1" max="100" value="8" required>
-                </label>
-
-                <label>
-                    Descripción
-                    <textarea id="eventDescription" placeholder="Información adicional..."></textarea>
-                </label>
-
-                <button type="button" class="submit-button" id="createEventButton">
-                    Crear actividad
-                </button>
-            </form>
+</div>
+<section class="events-section">
+    <div class="section-title"><h2>📋 Próximas actividades</h2><button type="button" class="submit-button" id="addEventButton">Crear actividad</button></div>
+    <div class="filters-bar" style="margin: 20px 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+        <div class="tabs-group" style="display: flex; gap: 8px;">
+            <button class="filter-tab active" data-view="upcoming">📅 Próximos</button>
+            <button class="filter-tab" data-view="my_events">⭐ Mis Eventos</button>
+            <button class="filter-tab" data-view="past">📜 Histórico</button>
+        </div>
+        <div class="category-select-wrapper">
+            <select id="categoryFilterSelect" style="padding: 8px 12px; border-radius: 6px; cursor: pointer;">
+                <option value="all">🎯 Todas las actividades</option><option value="dungeon">🗝️ Mazmorras</option><option value="quest">🗺️ Misiones</option><option value="infinite_dreams">🌀 Sueños Infinitos</option><option value="commission">📦 Encargo</option><option value="raid">⚔️ Raids</option><option value="farm">💰 Drop/Farm</option><option value="wanted">📜 Busca y Captura</option><option value="other">🎲 Otros</option>
+            </select>
         </div>
     </div>
+    <div id="eventsList"></div>
+</section>
+</div>
+<div id="eventModal" class="modal hidden">
+    <div class="modal-content">
+        <button id="closeModal" class="close-button">×</button><h2>➕ Crear actividad</h2>
+        <form id="eventForm">
+            <label>Nombre de la actividad<input type="text" id="eventName" placeholder="Ej: RAID Conde Kontatrás" required></label>
+            <label>Tipo<select id="eventType" required><option value="dungeon">🗝️ Mazmorra</option><option value="quest">🗺️ Misiones</option><option value="infinite_dreams">🌀 Sueños Infinitos</option><option value="commission">📦 Encargo</option><option value="raid">⚔️ Raid</option><option value="farm">💰 Drop/Farm</option><option value="wanted">📜 Busca y Captura</option><option value="other">🎲 Otro</option></select></label>
+            <div class="form-row"><label>Fecha<input type="date" id="eventDate" required></label><label>Hora<input type="time" id="eventTime" required></label></div>
+            <label>Cupos<input type="number" id="eventCapacity" min="1" max="100" value="8" required></label>
+            <label>Descripción<textarea id="eventDescription" placeholder="Información adicional..."></textarea></label>
+            <button type="button" class="submit-button" id="createEventButton">Crear actividad</button>
+        </form>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+    const SUPABASE_URL = "https://nmmetzityubqbrbpibee.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+    const pushClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+    const waitForLeaveEvent = setInterval(() => {
+        if (typeof window.leaveEvent !== "function") return;
+        clearInterval(waitForLeaveEvent);
+        const originalLeaveEvent = window.leaveEvent;
 
-    <!-- ============================================
-         PUENTE DE NOTIFICACIÓN AL RETIRARSE
-         ============================================ -->
-    <script>
-    (function () {
-        const waitForLeaveEvent = setInterval(() => {
-            if (typeof window.leaveEvent !== "function") return;
+        window.leaveEvent = async function (eventId) {
+            try {
+                const { data: sessionData } = await pushClient.auth.getSession();
+                const userId = sessionData?.session?.user?.id;
+                if (!userId) return originalLeaveEvent(eventId);
 
-            clearInterval(waitForLeaveEvent);
+                const { data: participation, error: participationError } = await pushClient
+                    .from("event_participants")
+                    .select("player_name")
+                    .eq("event_id", eventId)
+                    .eq("user_id", userId)
+                    .maybeSingle();
 
-            const originalLeaveEvent = window.leaveEvent;
-
-            window.leaveEvent = async function (eventId) {
-                if (!window.currentUser) {
+                if (participationError || !participation) {
+                    if (participationError) console.warn("⚠️ No se pudo comprobar la participación:", participationError);
                     return originalLeaveEvent(eventId);
                 }
 
-                const userId = window.currentUser.id;
-                const profileName = window.currentProfile?.player_name || "Un jugador";
-
-                // Comprobar que realmente estaba apuntado antes de retirarlo.
-                const { data: participation, error: participationError } =
-                    await window.supabaseClient
-                        .from("event_participants")
-                        .select("player_name")
-                        .eq("event_id", eventId)
-                        .eq("user_id", userId)
-                        .maybeSingle();
-
-                if (participationError) {
-                    console.warn("⚠️ No se pudo comprobar la participación:", participationError);
-                }
-
-                if (!participation) {
-                    return originalLeaveEvent(eventId);
-                }
-
-                const participantName = participation.player_name || profileName;
-
-                // Ejecutar el retiro original.
+                const participantName = participation.player_name || "Un jugador";
                 const result = await originalLeaveEvent(eventId);
 
-                // Avisar al creador y a los demás participantes.
-                try {
-                    const { data, error } = await window.supabaseClient.functions.invoke(
-                        "send-push",
-                        {
-                            body: {
-                                type: "participant_left",
-                                event_id: eventId,
-                                participant_user_id: userId,
-                                participant_name: participantName
-                            }
-                        }
-                    );
+                const { data, error } = await pushClient.functions.invoke("send-push", {
+                    body: { type: "participant_left", event_id: eventId, participant_user_id: userId, participant_name: participantName }
+                });
 
-                    if (error) {
-                        console.error("⚠️ Error enviando notificación de retiro:", error);
-                    } else {
-                        console.log("🔴 Notificación de retiro enviada:", data);
-                    }
-                } catch (error) {
-                    console.error("⚠️ Error llamando a send-push para retiro:", error);
-                }
-
+                if (error) console.error("⚠️ Error enviando notificación de retiro:", error);
+                else console.log("🔴 Notificación de retiro enviada:", data);
                 return result;
-            };
-
-            console.log("🔴 Puente de notificación de retiro activado.");
-        }, 100);
-    })();
-    </script>
-
+            } catch (error) {
+                console.error("⚠️ Error en notificación de retiro:", error);
+                return originalLeaveEvent(eventId);
+            }
+        };
+        console.log("🔴 Notificación de retiro preparada.");
+    }, 100);
+})();
+</script>
 </body>
 </html>
