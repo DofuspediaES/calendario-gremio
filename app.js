@@ -1995,6 +1995,8 @@ function renderEvents() {
         card.className =
             `event-card ${eventType} type-${eventType}`;
 
+        card.dataset.eventId = event.id;
+
 
         const isPast =
             isPastEvent(
