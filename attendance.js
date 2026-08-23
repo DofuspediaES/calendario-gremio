@@ -39,9 +39,10 @@
             return;
         }
 
+        const isConfirmed = event.attendance_confirmed === true;
         const modal = document.createElement("div");
         modal.className = "attendance-modal";
-        modal.innerHTML = `<div class="attendance-panel"><h2>👥 Confirmar asistencia</h2><div class="attendance-subtitle">${esc(event.name)}<br>Marca solamente a quienes <strong>NO asistieron</strong>.</div><div class="attendance-list">${rows.length ? rows.map(row => `<label class="attendance-row"><input type="checkbox" data-user-id="${esc(row.user_id)}" ${row.attended === false ? "checked" : ""}><span>${esc(row.player_name || "Jugador")}</span></label>`).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}</div><div class="attendance-actions"><button type="button" class="attendance-cancel">Cancelar</button><button type="button" class="attendance-save">Guardar asistencia</button></div></div>`;
+        modal.innerHTML = `<div class="attendance-panel"><h2>👥 Confirmar asistencia</h2><div class="attendance-subtitle">${esc(event.name)}<br>Marca solamente a quienes <strong>NO asistieron</strong>.</div><div class="attendance-list">${rows.length ? rows.map(row => `<label class="attendance-row"><input type="checkbox" data-user-id="${esc(row.user_id)}" ${isConfirmed && row.attended === false ? "checked" : ""}><span>${esc(row.player_name || "Jugador")}</span></label>`).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}</div><div class="attendance-actions"><button type="button" class="attendance-cancel">Cancelar</button><button type="button" class="attendance-save">Guardar asistencia</button></div></div>`;
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
