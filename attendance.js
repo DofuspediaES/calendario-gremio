@@ -27,13 +27,21 @@
         ownedEvents = (data || []).filter(isPast);
     }
 
-    function findEventForCard(card) {
-        const text = card.innerText || "";
-        return ownedEvents.find(event => event.name && text.includes(event.name));
+    // Obtiene el ID real de Supabase desde el botón Editar de la tarjeta.
+    // Así nunca confundimos actividades que tengan el mismo nombre.
+    function getEventIdFromCard(card) {
+        const edit = card.querySelector(".edit-button");
+        const onclick = edit?.getAttribute("onclick") || "";
+        const match = onclick.match(/openEditModal\((\d+)\)/);
+        return match ? Number(match[1]) : null;
     }
 
     async function openAttendance(event) {
-        const { data: rows, error } = await db.from("event_participants").select("user_id,player_name,attended").eq("event_id", event.id).order("player_name", { ascending: true });
+        const { data: rows, error } = await db.from("event_participants")
+            .select("user_id,player_name,attended")
+            .eq("event_id", event.id)
+            .order("player_name", { ascending: true });
+
         if (error) {
             console.error("❌ Error cargando participantes:", error);
             alert("No se pudieron cargar los participantes.");
@@ -57,7 +65,10 @@
             let failed = false;
 
             for (const input of [...modal.querySelectorAll("input[data-user-id]")]) {
-                const { error: updateError } = await db.from("event_participants").update({ attended: !input.checked }).eq("event_id", event.id).eq("user_id", input.dataset.userId);
+                const { error: updateError } = await db.from("event_participants")
+                    .update({ attended: !input.checked })
+                    .eq("event_id", event.id)
+                    .eq("user_id", input.dataset.userId);
                 if (updateError) {
                     console.error("❌ Error guardando asistencia:", updateError);
                     failed = true;
@@ -72,9 +83,13 @@
                 return;
             }
 
-            const { error: confirmError } = await db.from("events").update({ attendance_confirmed: true }).eq("id", event.id);
+            const { error: confirmError } = await db.from("events")
+                .update({ attendance_confirmed: true })
+                .eq("id", event.id);
+
             if (confirmError) {
                 console.error("❌ Error confirmando la actividad:", confirmError);
+                alert("Se guardaron los asistentes, pero no se pudo confirmar la actividad.");
                 button.disabled = false;
                 button.textContent = "Guardar asistencia";
                 return;
@@ -87,32 +102,43 @@
 
     function injectButtons() {
         const list = document.getElementById("eventsList");
-        if (!list || !ownedEvents.length) return;
+        if (!list || !ownedEvents.length || typeof currentUser === "undefined" || !currentUser) return;
 
         list.querySelectorAll(".event-card").forEach(card => {
-            const event = findEventForCard(card);
-            if (!event) return;
+            const eventId = getEventIdFromCard(card);
+            if (eventId === null) return;
 
-            const existing = card.querySelector(".attendance-button");
-            if (existing) {
-                const label = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
-                if (existing.textContent !== label) existing.textContent = label;
-                if (existing.dataset.attendanceBound !== "true") {
-                    existing.dataset.attendanceBound = "true";
-                    existing.addEventListener("click", () => openAttendance(event));
-                }
-                return;
-            }
+            const event = ownedEvents.find(e => e.id === eventId);
+            if (!event || event.user_id !== currentUser.id) return;
+
+            if (typeof window.isPastEvent === "function" && !window.isPastEvent(event.event_date, event.event_time, event.timezone)) return;
 
             const actions = card.querySelector(".event-actions");
             if (!actions) return;
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "attendance-button";
-            button.dataset.attendanceBound = "true";
+
+            // Elimina el botón antiguo que venía incrustado en index.html,
+            // quitando también su antiguo listener. El clon conserva el estilo.
+            let button = card.querySelector(".attendance-button");
+            if (button && button.dataset.attendanceVersion !== "2") {
+                const cleanButton = button.cloneNode(true);
+                button.replaceWith(cleanButton);
+                button = cleanButton;
+            }
+
+            if (!button) {
+                button = document.createElement("button");
+                button.type = "button";
+                button.className = "attendance-button";
+                actions.appendChild(button);
+            }
+
+            button.dataset.attendanceVersion = "2";
             button.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "👥 Confirmar asistencia";
-            button.addEventListener("click", () => openAttendance(event));
-            actions.appendChild(button);
+
+            if (button.dataset.attendanceBound !== "true") {
+                button.dataset.attendanceBound = "true";
+                button.addEventListener("click", () => openAttendance(event));
+            }
         });
     }
 
@@ -123,10 +149,8 @@
         const list = document.getElementById("eventsList");
         if (list && !observerStarted) {
             observerStarted = true;
-            new MutationObserver(() => {
-                // Deja que el render de la página termine antes de revisar las tarjetas.
-                requestAnimationFrame(injectButtons);
-            }).observe(list, { childList: true, subtree: true });
+            new MutationObserver(() => requestAnimationFrame(injectButtons))
+                .observe(list, { childList: true, subtree: true });
         }
     }
 
