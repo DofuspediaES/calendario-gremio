@@ -18,7 +18,7 @@
     async function loadOwnedEvents() {
         const { data: { session } } = await db.auth.getSession();
         if (!session?.user) return;
-        const { data, error } = await db.from("events").select("id,name,user_id,event_date,event_time,timezone").eq("user_id", session.user.id);
+        const { data, error } = await db.from("events").select("id,name,user_id,event_date,event_time,timezone,attendance_confirmed").eq("user_id", session.user.id);
         if (error) {
             console.error("❌ Error cargando actividades del creador:", error);
             return;
@@ -70,6 +70,16 @@
                 return;
             }
 
+            const { error: confirmError } = await db.from("events").update({ attendance_confirmed: true }).eq("id", event.id);
+            if (confirmError) {
+                console.error("❌ Error confirmando la actividad:", confirmError);
+                alert("Se guardaron los asistentes, pero no se pudo confirmar la actividad.");
+                button.disabled = false;
+                button.textContent = "Guardar asistencia";
+                return;
+            }
+
+            event.attendance_confirmed = true;
             close();
         });
     }
@@ -86,7 +96,7 @@
             const button = document.createElement("button");
             button.type = "button";
             button.className = "attendance-button";
-            button.textContent = "✅ Confirmar asistencia";
+            button.textContent = event.attendance_confirmed ? "✏️ Editar asistencia" : "✅ Confirmar asistencia";
             button.addEventListener("click", () => openAttendance(event));
             actions.appendChild(button);
         });
