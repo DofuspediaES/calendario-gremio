@@ -1,129 +1,108 @@
 (function () {
     "use strict";
 
-    function getEvent(eventId) {
-        return Array.isArray(window.__calendarEvents) ? window.__calendarEvents.find(e => e.id === eventId) : null;
+    const SUPABASE_URL = "https://nmmetzityubqbrbpibee.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_o8bXQ5puE8EUgEn_c_qM6A_7OOxZIsX";
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let ownedEvents = [];
+
+    function esc(value) {
+        return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function escapeText(value) {
-        return String(value ?? "");
+    function isPast(event) {
+        if (typeof window.isPastEvent === "function") return window.isPastEvent(event.event_date, event.event_time, event.timezone);
+        return new Date(`${event.event_date}T${event.event_time || "23:59"}`).getTime() < Date.now();
     }
 
-    async function openAttendanceModal(eventId) {
-        const event = getEvent(eventId);
-        if (!event || !window.currentUser) return;
-
-        const { data: rows, error } = await window.supabaseClient
-            .from("event_participants")
-            .select("id,user_id,player_name,attended")
-            .eq("event_id", eventId)
-            .order("joined_at", { ascending: true });
-
+    async function loadOwnedEvents() {
+        const { data: { session } } = await db.auth.getSession();
+        if (!session?.user) return;
+        const { data, error } = await db.from("events").select("id,name,user_id,event_date,event_time,timezone").eq("user_id", session.user.id);
         if (error) {
-            console.error("Error cargando asistencia:", error);
+            console.error("❌ Error cargando actividades del creador:", error);
+            return;
+        }
+        ownedEvents = (data || []).filter(isPast);
+    }
+
+    function findEventForCard(card) {
+        const text = card.innerText || "";
+        return ownedEvents.find(event => event.name && text.includes(event.name));
+    }
+
+    async function openAttendance(event) {
+        const { data: rows, error } = await db.from("event_participants").select("user_id,player_name,attended").eq("event_id", event.id).order("player_name", { ascending: true });
+        if (error) {
+            console.error("❌ Error cargando participantes:", error);
             alert("No se pudieron cargar los participantes.");
             return;
         }
 
         const modal = document.createElement("div");
         modal.className = "attendance-modal";
-        modal.innerHTML = `
-            <div class="attendance-panel">
-                <h2>✅ Confirmar asistencia</h2>
-                <div class="attendance-subtitle">${escapeText(event.name)} · Marca quién realmente asistió.</div>
-                <div class="attendance-list">
-                    ${rows.length ? rows.map(row => `
-                        <label class="attendance-row">
-                            <input type="checkbox" data-user-id="${escapeText(row.user_id)}" ${row.attended ? "checked" : ""}>
-                            <span>${escapeText(row.player_name || "Jugador")}</span>
-                        </label>
-                    `).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}
-                </div>
-                <div class="attendance-actions">
-                    <button type="button" class="attendance-cancel">Cancelar</button>
-                    <button type="button" class="attendance-save">Guardar asistencia</button>
-                </div>
-            </div>
-        `;
-
+        modal.innerHTML = `<div class="attendance-panel"><h2>✅ Confirmar asistencia</h2><div class="attendance-subtitle">${esc(event.name)}<br>Marca quién realmente asistió.</div><div class="attendance-list">${rows.length ? rows.map(row => `<label class="attendance-row"><input type="checkbox" data-user-id="${esc(row.user_id)}" ${row.attended === true ? "checked" : ""}><span>${esc(row.player_name || "Jugador")}</span></label>`).join("") : `<div style="color:#aaa;padding:10px 0">No hubo participantes.</div>`}</div><div class="attendance-actions"><button type="button" class="attendance-cancel">Cancelar</button><button type="button" class="attendance-save">Guardar asistencia</button></div></div>`;
         document.body.appendChild(modal);
 
         const close = () => modal.remove();
         modal.querySelector(".attendance-cancel").addEventListener("click", close);
-        modal.addEventListener("click", e => {
-            if (e.target === modal) close();
-        });
+        modal.addEventListener("click", e => { if (e.target === modal) close(); });
 
         modal.querySelector(".attendance-save").addEventListener("click", async () => {
-            const saveButton = modal.querySelector(".attendance-save");
-            saveButton.disabled = true;
-            saveButton.textContent = "Guardando...";
+            const button = modal.querySelector(".attendance-save");
+            button.disabled = true;
+            button.textContent = "Guardando...";
+            let failed = false;
 
-            const attendedUserIds = [...modal.querySelectorAll("input[type=checkbox]:checked")]
-                .map(input => input.dataset.userId);
-
-            const { error: saveError } = await window.supabaseClient.rpc(
-                "mark_event_attendance",
-                {
-                    p_event_id: eventId,
-                    p_attended_user_ids: attendedUserIds
+            for (const input of [...modal.querySelectorAll("input[data-user-id]")]) {
+                const { error: updateError } = await db.from("event_participants").update({ attended: input.checked }).eq("event_id", event.id).eq("user_id", input.dataset.userId);
+                if (updateError) {
+                    console.error("❌ Error guardando asistencia:", updateError);
+                    failed = true;
+                    break;
                 }
-            );
+            }
 
-            if (saveError) {
-                console.error("Error guardando asistencia:", saveError);
-                alert(saveError.message || "No se pudo guardar la asistencia.");
-                saveButton.disabled = false;
-                saveButton.textContent = "Guardar asistencia";
+            if (failed) {
+                alert("No se pudo guardar la asistencia. Revisa los permisos de Supabase.");
+                button.disabled = false;
+                button.textContent = "Guardar asistencia";
                 return;
             }
 
             close();
-            if (typeof window.loadEvents === "function") {
-                await window.loadEvents();
-            } else if (typeof window.renderEvents === "function") {
-                window.renderEvents();
-            }
+            alert("✅ Asistencia guardada correctamente.");
         });
     }
 
     function injectButtons() {
         const list = document.getElementById("eventsList");
-        if (!list || !Array.isArray(window.__calendarEvents) || !window.currentUser) return;
-
+        if (!list || !ownedEvents.length) return;
         list.querySelectorAll(".event-card").forEach(card => {
-            const eventId = Number(card.dataset.eventId);
-            if (!eventId || card.querySelector(".attendance-button")) return;
-
-            const event = getEvent(eventId);
-            if (!event || event.user_id !== window.currentUser.id) return;
-
-            const past = typeof window.isPastEvent === "function"
-                ? window.isPastEvent(event.event_date, event.event_time, event.timezone)
-                : false;
-
-            if (!past) return;
-
+            if (card.querySelector(".attendance-button")) return;
+            const event = findEventForCard(card);
+            if (!event) return;
             const actions = card.querySelector(".event-actions");
             if (!actions) return;
-
             const button = document.createElement("button");
             button.type = "button";
             button.className = "attendance-button";
             button.textContent = "✅ Confirmar asistencia";
-            button.addEventListener("click", () => openAttendanceModal(eventId));
+            button.addEventListener("click", () => openAttendance(event));
             actions.appendChild(button);
         });
     }
 
-    window.openAttendanceModal = openAttendanceModal;
-    window.addEventListener("calendar-events-ready", injectButtons);
-
-    const observer = new MutationObserver(injectButtons);
-    document.addEventListener("DOMContentLoaded", () => {
+    async function start() {
+        await loadOwnedEvents();
+        injectButtons();
         const list = document.getElementById("eventsList");
-        if (list) observer.observe(list, { childList: true, subtree: true });
+        if (list) new MutationObserver(injectButtons).observe(list, { childList: true, subtree: true });
         setTimeout(injectButtons, 500);
         setTimeout(injectButtons, 1500);
-    });
+        setTimeout(injectButtons, 3000);
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
 })();
