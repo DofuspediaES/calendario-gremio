@@ -231,6 +231,11 @@
             if(role==="background" && terms.some(term=>normalizeTitle(term)==="piramide de sombra")){
                 return title.includes("piramide") && title.includes("sombra") && (item.page.imageinfo?.[0]?.thumbwidth||item.page.imageinfo?.[0]?.width||0)>=500;
             }
+            if(role==="background"){
+                const words=normalizeTitle(terms[0]).split(" ").filter(word=>word.length>2);
+                // Un fondo debe corresponder al nombre buscado; evita elegir por accidente el PNG del jefe.
+                return words.length>0 && words.every(word=>title.split(" ").includes(word));
+            }
             if(role==="boss"){
                 const words=normalizeTitle(cleanBossTerm(terms[0])).split(" ").filter(word=>word.length>2);
                 const titleWords=title.split(" ").filter(Boolean);
