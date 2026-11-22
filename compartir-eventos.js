@@ -189,7 +189,7 @@
         ];
         blocks.forEach(block=>{ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText(block.label,block.x,280);ctx.fillStyle="#fff";ctx.font="bold 19px Tahoma,sans-serif";ctx.fillText(truncate(ctx,block.value,block.x===540?190:215),block.x,307);});
         ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText("HORARIOS",62,341);
-        TIMEZONES.forEach((item,index)=>{const col=index%5,row=Math.floor(index/5),x=62+col*135,y=369+row*23;ctx.textAlign="left";ctx.font="16px Tahoma,sans-serif";ctx.fillStyle="#fff";ctx.fillText(item.flag,x,y);ctx.font="bold 13px Tahoma,sans-serif";ctx.fillStyle="#e4e6e8";ctx.fillText(getEventTime(event,item.zone),x+31,y);});
+        TIMEZONES.forEach((item,index)=>{const col=index%6,row=Math.floor(index/6),x=62+col*112,y=369+row*21;ctx.textAlign="left";ctx.font="16px Tahoma,sans-serif";ctx.fillStyle="#fff";ctx.fillText(item.flag,x,y);ctx.font="bold 13px Tahoma,sans-serif";ctx.fillStyle="#e4e6e8";ctx.fillText(getEventTime(event,item.zone),x+31,y);});
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
         return canvas;
     }
