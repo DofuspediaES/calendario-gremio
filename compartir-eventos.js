@@ -181,13 +181,19 @@
     }
     async function searchPages(term) {
         const variants=getSearchVariants(term);
-        const tasks=variants.map(async query=>{
+        const searchVariant=async query=>{
             const params=new URLSearchParams({action:"query",list:"search",srsearch:'"' + query.replace(/"/g,"") + '"',srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
             const response=await fetch(API+"?"+params.toString());
             if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
             const data=await response.json();
             return (data.query?.search||[]).map(item=>({pageid:item.pageid,title:item.title}));
-        });
+        };
+        const tasks=[];
+        // Limita la concurrencia para no saturar la API de Fandom al probar variantes.
+        for(let i=0;i<variants.length;i+=4){
+            const batch=await Promise.all(variants.slice(i,i+4).map(searchVariant));
+            tasks.push(...batch);
+        }
         // Consulta también los títulos exactos: el buscador interno puede no devolver un archivo aunque exista.
         const exactParams=new URLSearchParams({action:"query",titles:variants.map(value=>"File:"+value).join("|"),prop:"info",format:"json",origin:"*"});
         const exactResponse=await fetch(API+"?"+exactParams.toString());
@@ -195,7 +201,7 @@
         const exactData=await exactResponse.json();
         const exactPages=Object.values(exactData.query?.pages||{}).filter(page=>page.pageid);
         const matches=new Map();
-        [...(await Promise.all(tasks)).flat(),...exactPages].forEach(page=>matches.set(page.pageid,page));
+        [...tasks.flat(),...exactPages].forEach(page=>matches.set(page.pageid,page));
         const ids=[...matches.keys()];
         if(!ids.length)return [];
         const pages=[];
