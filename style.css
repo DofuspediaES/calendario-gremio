@@ -106,3 +106,8 @@ button:not(:disabled):active { transform:scale(.97); }
 @media(max-width:420px) {
 .header{padding:12px}.header-title-container{gap:8px}.guild-shield{width:48px;height:48px}.header h1{font-size:16px}.header p{font-size:10px}.today-button{padding:7px 8px}.day{min-height:65px}.calendar-event{font-size:8px}.event-actions{flex-direction:column}.join-button,.leave-button,.full-button{width:100%}
 }
+
+/* Compartir eventos como imagen */
+.share-event-button{background:#34302a;color:#e8d6ad;border:1px solid #806b45;border-radius:var(--radius-small);padding:9px 14px;cursor:pointer;font-weight:bold;font-size:12px}
+.share-event-button:hover{background:#4a3e2b;border-color:#c5b285;color:#fff}
+.share-event-button:disabled{opacity:.65;cursor:wait}
