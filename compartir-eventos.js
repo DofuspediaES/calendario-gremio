@@ -16,6 +16,12 @@
         return String(value || "").replace(/\s+/g, " ").trim();
     }
 
+    function normalizeTitle(value) {
+        return cleanText(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+            .replace(/^(file|archivo):/i, "").replace(/[_-]+/g, " ").replace(/[^a-z0-9 ]/g, " ")
+            .replace(/\s+/g, " ").trim();
+    }
+
     function truncate(ctx, value, maxWidth) {
         let text = cleanText(value);
         if (ctx.measureText(text).width <= maxWidth) return text;
@@ -35,18 +41,37 @@
     }
 
     const TIMEZONES = [
-        {flag:"🇵🇪",zone:"America/Lima"},{flag:"🇨🇴",zone:"America/Bogota"},
-        {flag:"🇪🇨",zone:"America/Guayaquil"},{flag:"🇻🇪",zone:"America/Caracas"},
-        {flag:"🇧🇴",zone:"America/La_Paz"},{flag:"🇨🇱",zone:"America/Santiago"},
-        {flag:"🇦🇷",zone:"America/Argentina/Buenos_Aires"},{flag:"🇺🇾",zone:"America/Montevideo"},
-        {flag:"🇵🇾",zone:"America/Asuncion"},{flag:"🇧🇷",zone:"America/Sao_Paulo"},
-        {flag:"🇲🇽",zone:"America/Mexico_City"},{flag:"🇲🇽",zone:"America/Cancun"},
-        {flag:"🇨🇷",zone:"America/Costa_Rica"},{flag:"🇵🇦",zone:"America/Panama"},
-        {flag:"🇩🇴",zone:"America/Santo_Domingo"},{flag:"🇺🇸",zone:"America/New_York"},
-        {flag:"🇺🇸",zone:"America/Los_Angeles"},{flag:"🇨🇦",zone:"America/Toronto"},
-        {flag:"🇪🇸",zone:"Europe/Madrid"},{flag:"🇫🇷",zone:"Europe/Paris"},
-        {flag:"🇬🇧",zone:"Europe/London"}
+        {flag:"🇵🇪",code:"pe",zone:"America/Lima"},{flag:"🇨🇴",code:"co",zone:"America/Bogota"},
+        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},{flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
+        {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},{flag:"🇨🇱",code:"cl",zone:"America/Santiago"},
+        {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},{flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
+        {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},{flag:"🇧🇷",code:"br",zone:"America/Sao_Paulo"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City"},{flag:"🇲🇽",code:"mx",zone:"America/Cancun"},
+        {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},{flag:"🇵🇦",code:"pa",zone:"America/Panama"},
+        {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},{flag:"🇺🇸",code:"us",zone:"America/New_York"},
+        {flag:"🇺🇸",code:"us",zone:"America/Los_Angeles"},{flag:"🇨🇦",code:"ca",zone:"America/Toronto"},
+        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid"},{flag:"🇫🇷",code:"fr",zone:"Europe/Paris"},
+        {flag:"🇬🇧",code:"gb",zone:"Europe/London"}
     ];
+    const flagCache = new Map();
+
+    async function loadFlag(code) {
+        if (!flagCache.has(code)) {
+            const points = [...code.toUpperCase()].map(ch => (0x1f1e6 + ch.charCodeAt(0) - 65).toString(16)).join("-");
+            flagCache.set(code, loadCanvasImage("https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/" + points + ".png").catch(() => null));
+        }
+        return flagCache.get(code);
+    }
+
+    function groupTimes(event) {
+        const groups = new Map();
+        TIMEZONES.forEach(item => {
+            const time = getEventTime(event, item.zone);
+            if (!groups.has(time)) groups.set(time, []);
+            if (!groups.get(time).some(country => country.code === item.code)) groups.get(time).push(item);
+        });
+        return [...groups.entries()].map(([time, countries]) => ({time, countries}));
+    }
 
     function getEventInstant(event) {
         if (typeof eventDateTimeToDate === "function") return eventDateTimeToDate(event.event_date,event.event_time,event.timezone||"America/Lima");
@@ -157,9 +182,15 @@
         ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
     }
 
-    function drawCard(event,participants,background,bosses) {
+    async function drawCard(event,participants,background,bosses) {
         const canvas=document.createElement("canvas");canvas.width=WIDTH;canvas.height=HEIGHT;
         const ctx=canvas.getContext("2d");
+        const radius=26;
+        ctx.save();
+        ctx.beginPath();ctx.moveTo(radius,0);ctx.lineTo(WIDTH-radius,0);ctx.quadraticCurveTo(WIDTH,0,WIDTH,radius);
+        ctx.lineTo(WIDTH,HEIGHT-radius);ctx.quadraticCurveTo(WIDTH,HEIGHT,WIDTH-radius,HEIGHT);
+        ctx.lineTo(radius,HEIGHT);ctx.quadraticCurveTo(0,HEIGHT,0,HEIGHT-radius);
+        ctx.lineTo(0,radius);ctx.quadraticCurveTo(0,0,radius,0);ctx.closePath();ctx.clip();
         ctx.fillStyle="#24272b";ctx.fillRect(0,0,WIDTH,HEIGHT);
         if(background)drawCover(ctx,background,0,0,WIDTH,HEIGHT);
         const overlay=ctx.createLinearGradient(0,0,WIDTH,HEIGHT);
@@ -169,7 +200,7 @@
             const maxHeight=250,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
             bosses.forEach((boss,index)=>{if(!boss)return;const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),w=boss.width*scale,h=boss.height*scale,x=count>1?520+index*(slotWidth+4)+(slotWidth-w)/2:770-w;ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(boss,x,215-h/2,w,h);ctx.restore();});
         }
-        ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.strokeRect(16,16,WIDTH-32,HEIGHT-32);
+        ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(34,16);ctx.lineTo(WIDTH-34,16);ctx.quadraticCurveTo(WIDTH-16,16,WIDTH-16,34);ctx.lineTo(WIDTH-16,HEIGHT-34);ctx.quadraticCurveTo(WIDTH-16,HEIGHT-16,WIDTH-34,HEIGHT-16);ctx.lineTo(34,HEIGHT-16);ctx.quadraticCurveTo(16,HEIGHT-16,16,HEIGHT-34);ctx.lineTo(16,34);ctx.quadraticCurveTo(16,16,34,16);ctx.stroke();
         ctx.fillStyle="#f73d00";ctx.fillRect(42,45,5,43);
         ctx.textAlign="left";ctx.fillStyle="#f73d00";ctx.font="bold 16px Tahoma,sans-serif";ctx.fillText("AVENTUWEWOS DEL WEY WABBIT",60,63);
 
@@ -189,8 +220,23 @@
         ];
         blocks.forEach(block=>{ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText(block.label,block.x,280);ctx.fillStyle="#fff";ctx.font="bold 19px Tahoma,sans-serif";ctx.fillText(truncate(ctx,block.value,block.x===540?190:215),block.x,307);});
         ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText("HORARIOS",62,341);
-        TIMEZONES.forEach((item,index)=>{const col=index%6,row=Math.floor(index/6),x=62+col*112,y=369+row*21;ctx.textAlign="left";ctx.font="16px Tahoma,sans-serif";ctx.fillStyle="#fff";ctx.fillText(item.flag,x,y);ctx.font="bold 13px Tahoma,sans-serif";ctx.fillStyle="#e4e6e8";ctx.fillText(getEventTime(event,item.zone),x+31,y);});
+        const groups=groupTimes(event);
+        const flagImages=await Promise.all([...new Set(groups.flatMap(group=>group.countries.map(item=>item.code)))].map(async code=>[code,await loadFlag(code)]));
+        const flags=new Map(flagImages);
+        let gx=62,gy=371;
+        groups.forEach(group=>{
+            const groupWidth=group.countries.length*18+48;
+            if(gx+groupWidth>742){gx=62;gy+=24;}
+            group.countries.forEach((country,index)=>{
+                const flag=flags.get(country.code);
+                if(flag)ctx.drawImage(flag,gx+index*18,gy-13,16,12);
+            });
+            ctx.fillStyle="#e4e6e8";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
+            ctx.fillText(group.time,gx+group.countries.length*18+4,gy);
+            gx+=groupWidth+12;
+        });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
+        ctx.restore();
         return canvas;
     }
 
@@ -205,35 +251,43 @@
         setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
-    function makeShareText(event) {
-        const times=TIMEZONES.map(item=>item.flag+" "+getEventTime(event,item.zone)).join("  ·  ");
-        return "⚔️ "+event.name+" ["+getEventTypeLabel(event.type)+"]\\n📅 "+formatEventDate(event.event_date)+"\\n"+times+"\\n\\nCalendario del gremio: "+location.href.split("#")[0];
-    }
-
-    function showPreview(canvas,filename,shareText,eventName,imageSummary,selected) {
+    function showPreview(canvas,filename,eventName,imageSummary,selected) {
         const old=document.querySelector(".share-preview-modal");if(old)old.remove();
         const modal=document.createElement("div");modal.className="share-preview-modal";
-        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button><button type="button" class="share-preview-native">↗ Compartir…</button></div></div>';
+        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-native">↗ Compartir imagen</button></div></div>';
         const image=modal.querySelector(".share-preview-image"),note=modal.querySelector(".share-preview-note"),query=modal.querySelector(".share-image-query"),results=modal.querySelector(".share-image-results"),searchButton=modal.querySelector(".share-image-search-button");
         modal.querySelector(".share-preview-subtitle").textContent=eventName;
-        let imageUrl=null,currentBlob=null,currentCanvas=canvas,currentShareText=shareText;
-        const updateNative=()=>{const file=currentBlob?new File([currentBlob],filename,{type:"image/png"}):null;native.hidden=!file||!navigator.share||!navigator.canShare||!navigator.canShare({files:[file]});};
+        let imageUrl=null,currentBlob=null,currentCanvas=canvas;
+        const updateNative=()=>{native.hidden=!currentBlob;};
         const update=async()=>{
             currentBlob=await new Promise((resolve,reject)=>currentCanvas.toBlob(v=>v?resolve(v):reject(new Error("No se pudo generar el PNG.")),"image/png"));
             if(imageUrl)URL.revokeObjectURL(imageUrl);imageUrl=URL.createObjectURL(currentBlob);image.src=imageUrl;updateNative();
         };
         const redraw=async()=>{
-            currentCanvas=drawCard(window.__shareEventData.event,window.__shareEventData.participants,selected.background,selected.bosses);
-            currentShareText=makeShareText(window.__shareEventData.event);
+            currentCanvas=await drawCard(window.__shareEventData.event,window.__shareEventData.participants,selected.background,selected.bosses);
             await update();
         };
         const close=()=>{modal.remove();if(imageUrl)URL.revokeObjectURL(imageUrl);};
         modal.querySelector(".share-preview-close").addEventListener("click",close);
         modal.addEventListener("click",e=>{if(e.target===modal)close();});
         modal.querySelector(".share-preview-download").addEventListener("click",()=>downloadBlob(currentBlob,filename));
-        modal.querySelector(".share-preview-whatsapp").addEventListener("click",()=>{downloadBlob(currentBlob,filename);window.open("https://web.whatsapp.com/send?text="+encodeURIComponent(currentShareText),"_blank");});
         const native=modal.querySelector(".share-preview-native");
-        native.addEventListener("click",async()=>{try{const file=new File([currentBlob],filename,{type:"image/png"});const promise=navigator.share({files:[file],title:eventName,text:currentShareText});await promise;}catch(error){if(error.name!=="AbortError")alert("No se pudo compartir: "+error.message);}});
+        native.addEventListener("click",async()=>{
+            try{
+                const file=new File([currentBlob],filename,{type:"image/png"});
+                if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+                    await navigator.share({files:[file],title:eventName});
+                }else{
+                    downloadBlob(currentBlob,filename);
+                    alert("Este navegador no permite compartir archivos directamente. La imagen se descargó; adjúntala en WhatsApp o en la aplicación que prefieras.");
+                }
+            }catch(error){
+                if(error.name!=="AbortError"){
+                    downloadBlob(currentBlob,filename);
+                    alert("No se pudo abrir el menú para compartir. La imagen se descargó para que puedas adjuntarla manualmente.");
+                }
+            }
+        });
         const doSearch=async()=>{
             const term=cleanText(query.value);if(!term)return;
             searchButton.disabled=true;searchButton.textContent="Buscando…";results.innerHTML="";
@@ -270,14 +324,14 @@
                 for(const boss of found.bosses||[]){try{selected.bosses.push(await loadCanvasImage(boss.url));}catch(e){console.warn("No se pudo cargar jefe:",e);}}
                 if(!selected.background&&!selected.bosses.length)warning="No se encontraron imágenes compatibles para esta actividad.";
             }catch(e){console.warn("Imágenes de Dofuspedia no disponibles:",e);warning=e.message;}
-            const canvas=drawCard(event,participants,selected.background,selected.bosses);
+            const canvas=await drawCard(event,participants,selected.background,selected.bosses);
             const filename=("evento-"+cleanText(event.name)).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9-]+/g,"-").replace(/^-|-$/g,"").toLowerCase()+".png";
             const summary=selected.background&&selected.bosses.length?"Se utilizó el fondo y "+selected.bosses.length+" imagen(es) de jefe. Puedes cambiarlos o añadir otros."
                 :selected.background?"Se utilizó el fondo de Dofuspedia. Puedes buscar y añadir jefes."
                 :selected.bosses.length?"Se utilizaron "+selected.bosses.length+" imagen(es) de jefe. Puedes buscar un fondo."
                 :"La tarjeta se generó sin imágenes. Puedes buscarlas manualmente. "+warning;
             window.__shareEventData={event,participants};
-            showPreview(canvas,filename,makeShareText(event),event.name,summary,selected);
+            showPreview(canvas,filename,event.name,summary,selected);
         }catch(error){console.error("Error preparando evento:",error);alert("No se pudo preparar la imagen: "+error.message);}
         finally{button.disabled=false;button.textContent=original;}
     }
