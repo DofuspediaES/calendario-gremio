@@ -44,11 +44,9 @@
         {flag:"🇵🇪",code:"pe",zone:"America/Lima"},
         {flag:"🇨🇴",code:"co",zone:"America/Bogota"},
         {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},
-        {flag:"🇪🇨",code:"ec",zone:"Pacific/Galapagos"},
         {flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
         {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},
         {flag:"🇨🇱",code:"cl",zone:"America/Santiago"},
-        {flag:"🇨🇱",code:"cl",zone:"Pacific/Easter"},
         {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},
         {flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
         {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},
@@ -59,8 +57,7 @@
         {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},
         {flag:"🇵🇦",code:"pa",zone:"America/Panama"},
         {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},
-        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid"},
-        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary"}
+        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid"}
     ];
     const flagCache = new Map();
 
