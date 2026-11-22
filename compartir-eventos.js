@@ -148,8 +148,7 @@
         const noNotes=cleanBossTerm(clean);
         const normalized=normalizeTitle(noNotes);
         const accentOptions={a:["a","á"],e:["e","é"],i:["i","í"],o:["o","ó"],u:["u","ú","ü"]};
-        const variants=new Set([clean,noNotes,normalized].filter(Boolean));
-        // Genera combinaciones con y sin tilde, pero limita el volumen de consultas.
+        const baseVariants=new Set([clean,noNotes,normalized].filter(Boolean));
         const words=normalized.split(/\s+/).filter(Boolean);
         let phrases=[""];
         for(const word of words){
@@ -176,8 +175,16 @@
             }
             phrases=nextPhrases;
         }
-        phrases.forEach(value=>variants.add(value));
-        return [...variants].filter(Boolean).slice(0,24);
+        phrases.forEach(value=>baseVariants.add(value));
+        const variants=new Set([...baseVariants].filter(Boolean));
+        // En Fandom, a menudo el archivo solo aparece al buscar su nombre completo.
+        // Por eso se prueban extensiones habituales para cualquier término, no solo nombres concretos.
+        const extensions=[".png",".jpg",".jpeg",".webp",".gif"];
+        [...baseVariants].filter(Boolean).forEach(value=>{
+            if(/\.(png|jpe?g|webp|gif|svg)$/i.test(value))return;
+            extensions.forEach(extension=>variants.add(value+extension));
+        });
+        return [...variants].filter(Boolean).slice(0,64);
     }
     async function searchPages(term) {
         const variants=getSearchVariants(term);
