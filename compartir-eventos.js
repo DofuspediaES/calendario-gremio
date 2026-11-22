@@ -51,10 +51,7 @@
         {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},
         {flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
         {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Tijuana"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Hermosillo"},
         {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Cancun"},
         {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},
         {flag:"🇵🇦",code:"pa",zone:"America/Panama"},
         {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},
@@ -316,15 +313,8 @@
         const flags=new Map(flagImages);
         let gx=62,gy=371;
         groups.forEach(group=>{
-            const mexico=group.countries.find(country=>country.code==="mx");
-            const city=mexico?({
-                "America/Tijuana":"Tijuana",
-                "America/Hermosillo":"Hermosillo",
-                "America/Mexico_City":"Ciudad de México",
-                "America/Cancun":"Cancún"
-            })[mexico.zone]:"";
-            const groupWidth=group.countries.length*18+43+(city?38:0);
-            if(gx+groupWidth>742){gx=62;gy+=city?34:23;}
+            const groupWidth=group.countries.length*18+43;
+            if(gx+groupWidth>742){gx=62;gy+=23;}
             let cx=gx;
             group.countries.forEach(country=>{
                 const flag=flags.get(country.code);
@@ -333,10 +323,6 @@
             });
             ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
             ctx.fillText(group.time,cx+2,gy);
-            if(city){
-                ctx.fillStyle="rgba(255,255,255,.72)";ctx.font="10px Tahoma,sans-serif";
-                ctx.fillText(city,gx,gy+13);
-            }
             gx+=groupWidth+12;
         });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
