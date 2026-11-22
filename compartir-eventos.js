@@ -241,7 +241,7 @@
         const blocks=[
             {x:62,label:"FECHA",value:formatEventDate(event.event_date)},
             {x:300,label:"TIPO DE ACTIVIDAD",value:typeLabel},
-            {x:540,label:"CUPOS",value:Number(event.capacity)>0?String(Math.trunc(Number(event.capacity))):"Sin límite"}
+            {x:540,label:Number(event.capacity)===1?"CUPO":"CUPOS",value:Number(event.capacity)>0?String(Math.trunc(Number(event.capacity))):"Sin límite"}
         ];
         blocks.forEach(block=>{ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText(block.label,block.x,280);ctx.fillStyle="#fff";ctx.font="bold 19px Tahoma,sans-serif";ctx.fillText(truncate(ctx,block.value,block.x===540?190:215),block.x,307);});
         ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText("HORARIOS",62,341);
