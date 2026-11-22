@@ -131,11 +131,11 @@
         if(role==="background"){
             if(ratio>=1.35)score+=12;else if(ratio>=1.1)score+=5;else score-=8;
             if(/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala|entorno|recuerdo|piramide/i.test(title))score+=10;
-            if(/monstruo|boss|jefe|personaje|npc/i.test(title))score-=3;
+            if(/monstruo|boss|jefe|personaje|npc|minotot|amirukam|vortex|kontatras|sombra/i.test(title))score-=25;
             if(width>=900)score+=5;
         }else{
             if(ratio>=.75&&ratio<=1.25)score+=10;else if(ratio<.75)score+=4;else score-=8;
-            if(/monstruo|boss|jefe|personaje|reina|vortex|kontatras|sombra/i.test(title))score+=8;
+            if(/monstruo|boss|jefe|personaje|reina|minotot|vortex|kontatras|sombra/i.test(title))score+=8;
             if(/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title))score-=5;
             if(width>=300)score+=3;
         }
