@@ -281,12 +281,7 @@
     async function drawCard(event,participants,background,bosses) {
         const canvas=document.createElement("canvas");canvas.width=WIDTH;canvas.height=HEIGHT;
         const ctx=canvas.getContext("2d");
-        const radius=26;
         ctx.save();
-        ctx.beginPath();ctx.moveTo(radius,0);ctx.lineTo(WIDTH-radius,0);ctx.quadraticCurveTo(WIDTH,0,WIDTH,radius);
-        ctx.lineTo(WIDTH,HEIGHT-radius);ctx.quadraticCurveTo(WIDTH,HEIGHT,WIDTH-radius,HEIGHT);
-        ctx.lineTo(radius,HEIGHT);ctx.quadraticCurveTo(0,HEIGHT,0,HEIGHT-radius);
-        ctx.lineTo(0,radius);ctx.quadraticCurveTo(0,0,radius,0);ctx.closePath();ctx.clip();
         ctx.fillStyle="#24272b";ctx.fillRect(0,0,WIDTH,HEIGHT);
         if(background)drawCover(ctx,background,0,0,WIDTH,HEIGHT);
         const overlay=ctx.createLinearGradient(0,0,WIDTH,HEIGHT);
@@ -296,7 +291,7 @@
             const maxHeight=250,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
             bosses.forEach((boss,index)=>{if(!boss)return;const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),w=boss.width*scale,h=boss.height*scale,x=count>1?520+index*(slotWidth+4)+(slotWidth-w)/2:770-w;ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(boss,x,215-h/2,w,h);ctx.restore();});
         }
-        ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(34,16);ctx.lineTo(WIDTH-34,16);ctx.quadraticCurveTo(WIDTH-16,16,WIDTH-16,34);ctx.lineTo(WIDTH-16,HEIGHT-34);ctx.quadraticCurveTo(WIDTH-16,HEIGHT-16,WIDTH-34,HEIGHT-16);ctx.lineTo(34,HEIGHT-16);ctx.quadraticCurveTo(16,HEIGHT-16,16,HEIGHT-34);ctx.lineTo(16,34);ctx.quadraticCurveTo(16,16,34,16);ctx.stroke();
+        ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.strokeRect(16,16,WIDTH-32,HEIGHT-32);
         ctx.fillStyle="#f73d00";ctx.fillRect(42,45,5,43);
         ctx.textAlign="left";ctx.fillStyle="#f73d00";ctx.font="bold 16px Tahoma,sans-serif";ctx.fillText("AVENTUWEWOS DEL WEY WABBIT",60,63);
 
@@ -321,8 +316,15 @@
         const flags=new Map(flagImages);
         let gx=62,gy=371;
         groups.forEach(group=>{
-            const groupWidth=group.countries.length*18+43;
-            if(gx+groupWidth>742){gx=62;gy+=23;}
+            const mexico=group.countries.find(country=>country.code==="mx");
+            const city=mexico?({
+                "America/Tijuana":"Tijuana",
+                "America/Hermosillo":"Hermosillo",
+                "America/Mexico_City":"Ciudad de México",
+                "America/Cancun":"Cancún"
+            })[mexico.zone]:"";
+            const groupWidth=group.countries.length*18+43+(city?38:0);
+            if(gx+groupWidth>742){gx=62;gy+=city?34:23;}
             let cx=gx;
             group.countries.forEach(country=>{
                 const flag=flags.get(country.code);
@@ -331,6 +333,10 @@
             });
             ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
             ctx.fillText(group.time,cx+2,gy);
+            if(city){
+                ctx.fillStyle="rgba(255,255,255,.72)";ctx.font="10px Tahoma,sans-serif";
+                ctx.fillText(city,gx,gy+13);
+            }
             gx+=groupWidth+12;
         });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
