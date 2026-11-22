@@ -88,7 +88,7 @@
                 const words = name.toLocaleLowerCase("es").split(/\s+/).filter(word => word.length > 2);
 
                 const ranked = pages.map(page => {
-                    const title = cleanText(page.title.replace(/^File:/i, "").replace(/\.[^.]+$/, ""))
+                    const title = cleanText(page.title.replace(/^(File|Archivo):/i, "").replace(/\.[^.]+$/, ""))
                         .toLocaleLowerCase("es").replace(/[_-]/g, " ");
                     const info = page.imageinfo?.[0] || {};
                     const width = info.thumbwidth || info.width || 0;
@@ -295,8 +295,10 @@
                     (imageWarning ? "\nMotivo: " + imageWarning : "")));
             }
         } catch (error) {
-            console.error("Error compartiendo evento:", error);
-            alert("No se pudo preparar la imagen: " + error.message);
+            if (error.name !== "AbortError") {
+                console.error("Error compartiendo evento:", error);
+                alert("No se pudo preparar la imagen: " + error.message);
+            }
         } finally {
             button.disabled = false;
             button.textContent = originalText;
@@ -309,8 +311,8 @@
 
         list.querySelectorAll(".event-card").forEach(card => {
             if (card.querySelector(".share-event-button")) return;
-            const eventId = Number(card.dataset.eventId);
-            const event = events.find(item => Number(item.id) === eventId);
+            const eventId = String(card.dataset.eventId);
+            const event = events.find(item => String(item.id) === String(card.dataset.eventId));
             if (!event) return;
 
             const actions = card.querySelector(".event-actions");
