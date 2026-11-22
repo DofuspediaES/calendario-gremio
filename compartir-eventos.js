@@ -17,7 +17,8 @@
     }
 
     function normalizeTitle(value) {
-        return cleanText(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        return cleanText(value).replace(/\.(png|jpe?g|gif|webp|svg)$/i, "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
             .replace(/^(file|archivo):/i, "").replace(/[_-]+/g, " ").replace(/[^a-z0-9 ]/g, " ")
             .replace(/\s+/g, " ").trim();
     }
