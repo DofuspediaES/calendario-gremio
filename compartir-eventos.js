@@ -133,9 +133,27 @@
         const normalized = normalizeTitle(noNotes);
         const core = normalized
             .replace(/\b(con|com|sin|sans)\s+(idolo|idol|idole)s?\b/g," ")
-            .replace(/\b(duo|trio|score|logro|exito|exito|exitos|hardcore)\b/g," ")
+            .replace(/\b(duo|trio|score|logro|exito|exitos|hardcore)\b/g," ")
             .replace(/\s+/g," ").trim();
-        return [...new Set([clean,noNotes,normalized,core].filter(Boolean))];
+        const bases = [...new Set([clean,noNotes,normalized,core].filter(Boolean))];
+        const accentMap = {a:["á"],e:["é"],i:["í"],o:["ó"],u:["ú","ü"]};
+        const variants = new Set(bases);
+        for (const base of [noNotes,core]) {
+            let generated = [normalizeTitle(base)];
+            for (let i=0;i<base.length && variants.size<28;i++) {
+                const letter=base[i].toLowerCase(), accents=accentMap[letter];
+                if (!accents) continue;
+                const additions=[];
+                for (const current of generated) {
+                    const plain=current[i];
+                    if (plain===letter) for (const accent of accents) additions.push(current.slice(0,i)+accent+current.slice(i+1));
+                }
+                generated.push(...additions);
+                generated=generated.slice(0,20);
+            }
+            generated.forEach(value=>variants.add(value));
+        }
+        return [...variants].filter(Boolean).slice(0,28);
     }
     async function searchPages(term) {
         const variants = getSearchVariants(term);
@@ -185,8 +203,11 @@
             if(role==="boss"){
                 const words=normalizeTitle(terms[0]).split(" ").filter(word=>word.length>2);
                 const titleWords=title.split(" ");
-                // Basta que el nombre del jefe coincida como palabra completa; se permiten sufijos como "Dofus", "monstruo" o "boss".
-                return words.length>0 && words.every(word=>titleWords.includes(word));
+                const allowedExtraWords=new Set(["dofus","boss","monstruo","monster","190","200"]);
+                // Evita confundir al jefe con objetos/libros cuyo título solo menciona su nombre (ej. "Libro rojo de Sombra").
+                return words.length>0 &&
+                    words.every(word=>titleWords.includes(word)) &&
+                    titleWords.every(word=>words.includes(word)||allowedExtraWords.has(word));
             }
             return true;
         });
