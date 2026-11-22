@@ -147,77 +147,55 @@
         const clean=cleanText(term);
         const noNotes=cleanBossTerm(clean);
         const normalized=normalizeTitle(noNotes);
-        const accentOptions={a:["a","á"],e:["e","é"],i:["i","í"],o:["o","ó"],u:["u","ú","ü"]};
-        const baseVariants=new Set([clean,noNotes,normalized].filter(Boolean));
+        const variants=new Set([clean,noNotes,normalized].filter(Boolean));
+        // Prueba variantes con una vocal acentuada cada vez; evita la explosión combinatoria.
+        const accentOptions={a:"á",e:"é",i:"í",o:"ó",u:"ú"};
         const words=normalized.split(/\s+/).filter(Boolean);
-        let phrases=[""];
-        for(const word of words){
-            let wordVariants=[""];
-            for(const char of word){
-                const options=accentOptions[char]||[char];
-                const next=[];
-                for(const prefix of wordVariants){
-                    for(const option of options){
-                        next.push(prefix+option);
-                        if(next.length>=24)break;
-                    }
-                    if(next.length>=24)break;
-                }
-                wordVariants=next;
-            }
-            const nextPhrases=[];
-            for(const phrase of phrases){
-                for(const variant of wordVariants){
-                    nextPhrases.push((phrase+" "+variant).trim());
-                    if(nextPhrases.length>=24)break;
-                }
-                if(nextPhrases.length>=24)break;
-            }
-            phrases=nextPhrases;
-        }
-        phrases.forEach(value=>baseVariants.add(value));
-        const variants=new Set([...baseVariants].filter(Boolean));
-        // En Fandom, a menudo el archivo solo aparece al buscar su nombre completo.
-        // Por eso se prueban extensiones habituales para cualquier término, no solo nombres concretos.
-        const extensions=[".png",".jpg",".jpeg",".webp",".gif"];
-        [...baseVariants].filter(Boolean).forEach(value=>{
-            if(/\.(png|jpe?g|webp|gif|svg)$/i.test(value))return;
-            extensions.forEach(extension=>variants.add(value+extension));
+        words.forEach((word,wordIndex)=>{
+            [...word].forEach((char,charIndex)=>{
+                const accented=accentOptions[char];
+                if(!accented)return;
+                const changed=word.slice(0,charIndex)+accented+word.slice(charIndex+1);
+                const phrase=words.map((part,index)=>index===wordIndex?changed:part).join(" ");
+                variants.add(phrase);
+            });
         });
-        return [...variants].filter(Boolean).slice(0,64);
+        return [...variants].filter(Boolean).slice(0,10);
     }
     async function searchPages(term) {
         const variants=getSearchVariants(term);
-        const searchVariant=async query=>{
-            const params=new URLSearchParams({action:"query",list:"search",srsearch:'"' + query.replace(/"/g,"") + '"',srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
-            const response=await fetch(API+"?"+params.toString());
-            if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
-            const data=await response.json();
-            return (data.query?.search||[]).map(item=>({pageid:item.pageid,title:item.title}));
-        };
-        const tasks=[];
-        // Limita la concurrencia para no saturar la API de Fandom al probar variantes.
-        for(let i=0;i<variants.length;i+=4){
-            const batch=await Promise.all(variants.slice(i,i+4).map(searchVariant));
-            tasks.push(...batch);
-        }
-        // Consulta también los títulos exactos: el buscador interno puede no devolver un archivo aunque exista.
-        const exactParams=new URLSearchParams({action:"query",titles:variants.map(value=>"File:"+value).join("|"),prop:"info",format:"json",origin:"*"});
+        const extensions=[".png",".jpg",".jpeg",".webp",".gif"];
+        const searchTerms=new Set();
+        variants.forEach(value=>{
+            searchTerms.add(value);
+            if(!/\.(png|jpe?g|webp|gif|svg)$/i.test(value)){
+                extensions.forEach(extension=>searchTerms.add(value+extension));
+            }
+        });
+        const terms=[...searchTerms].slice(0,50);
+        const searchExpression=terms.map(value=>'"'+value.replace(/"/g,"")+'"').join(" OR ");
+        const params=new URLSearchParams({action:"query",list:"search",srsearch:searchExpression,srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
+        const response=await fetch(API+"?"+params.toString());
+        if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
+        const data=await response.json();
+        const searchPages=data.query?.search||[];
+        // La consulta de títulos exactos incluye las extensiones: algunos archivos solo aparecen así.
+        const exactParams=new URLSearchParams({action:"query",titles:terms.map(value=>"File:"+value).join("|"),prop:"info",format:"json",origin:"*"});
         const exactResponse=await fetch(API+"?"+exactParams.toString());
         if(!exactResponse.ok)throw new Error("No se pudieron consultar los nombres exactos de archivos.");
         const exactData=await exactResponse.json();
         const exactPages=Object.values(exactData.query?.pages||{}).filter(page=>page.pageid);
         const matches=new Map();
-        [...tasks.flat(),...exactPages].forEach(page=>matches.set(page.pageid,page));
+        [...searchPages,...exactPages].forEach(page=>matches.set(page.pageid,page));
         const ids=[...matches.keys()];
         if(!ids.length)return [];
         const pages=[];
         for(let i=0;i<ids.length;i+=50){
-            const params=new URLSearchParams({action:"query",pageids:ids.slice(i,i+50).join("|"),prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
-            const response=await fetch(API+"?"+params.toString());
-            if(!response.ok)throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+response.status+").");
-            const data=await response.json();
-            pages.push(...Object.values(data.query?.pages||{}));
+            const imageParams=new URLSearchParams({action:"query",pageids:ids.slice(i,i+50).join("|"),prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
+            const imageResponse=await fetch(API+"?"+imageParams.toString());
+            if(!imageResponse.ok)throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+imageResponse.status+").");
+            const imageData=await imageResponse.json();
+            pages.push(...Object.values(imageData.query?.pages||{}));
         }
         return pages;
     }
