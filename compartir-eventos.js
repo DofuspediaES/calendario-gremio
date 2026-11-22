@@ -75,7 +75,7 @@
                     gsrnamespace: "6",
                     gsrlimit: "20",
                     prop: "imageinfo",
-                    iiprop: "url",
+                    iiprop: "url|size",
                     iiurlwidth: "1200",
                     format: "json",
                     origin: "*"
@@ -90,14 +90,21 @@
                 const ranked = pages.map(page => {
                     const title = cleanText(page.title.replace(/^File:/i, "").replace(/\\.[^.]+$/, ""))
                         .toLocaleLowerCase("es").replace(/[_-]/g, " ");
+                    const info = page.imageinfo?.[0] || {};
+                    const width = info.thumbwidth || info.width || 0;
+                    const height = info.thumbheight || info.height || 0;
+                    const ratio = width && height ? width / height : 0;
                     let score = 0;
                     if (title.includes(name.toLocaleLowerCase("es"))) score += 10;
                     for (const word of words) {
                         if (title.includes(word)) score += 3;
                     }
                     if (/icono|icon|miniatura|thumb|inventario|item|objeto|interfaz/i.test(title)) score -= 8;
-                    if (/captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title)) score += 4;
-                    if (/monstruo|boss|jefe/i.test(title)) score += 1;
+                    if (/captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title)) score += 5;
+                    if (/monstruo|boss|jefe|personaje|npc/i.test(title)) score -= 2;
+                    if (ratio >= 1.35) score += 5;
+                    else if (ratio > 0 && ratio < 1) score -= 4;
+                    if (width >= 900) score += 2;
                     return { page, score };
                 }).filter(item => item.score >= 3).sort((a, b) => b.score - a.score);
 
