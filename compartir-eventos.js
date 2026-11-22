@@ -41,16 +41,26 @@
     }
 
     const TIMEZONES = [
-        {flag:"🇵🇪",code:"pe",zone:"America/Lima"},{flag:"🇨🇴",code:"co",zone:"America/Bogota"},
-        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},{flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
-        {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},{flag:"🇨🇱",code:"cl",zone:"America/Santiago"},
-        {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},{flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
-        {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},{flag:"🇧🇷",code:"br",zone:"America/Sao_Paulo"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City"},{flag:"🇲🇽",code:"mx",zone:"America/Cancun"},
-        {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},{flag:"🇵🇦",code:"pa",zone:"America/Panama"},
-        {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},{flag:"🇺🇸",code:"us",zone:"America/New_York"},
-        {flag:"🇺🇸",code:"us",zone:"America/Los_Angeles"},{flag:"🇨🇦",code:"ca",zone:"America/Toronto"},
-        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid"},{flag:"🇫🇷",code:"fr",zone:"Europe/Paris"},
+        {flag:"🇵🇪",code:"pe",zone:"America/Lima"},
+        {flag:"🇨🇴",code:"co",zone:"America/Bogota"},
+        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},
+        {flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
+        {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},
+        {flag:"🇨🇱",code:"cl",zone:"America/Santiago",city:"Santiago"},
+        {flag:"🇨🇱",code:"cl",zone:"Pacific/Easter",city:"Isla de Pascua"},
+        {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},
+        {flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
+        {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},
+        {flag:"🇧🇷",code:"br",zone:"America/Sao_Paulo",city:"São Paulo"},
+        {flag:"🇧🇷",code:"br",zone:"America/Manaus",city:"Manaus"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City",city:"CDMX"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Cancun",city:"Cancún"},
+        {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},
+        {flag:"🇵🇦",code:"pa",zone:"America/Panama"},
+        {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},
+        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid",city:"Madrid"},
+        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary",city:"Canarias"},
+        {flag:"🇫🇷",code:"fr",zone:"Europe/Paris"},
         {flag:"🇬🇧",code:"gb",zone:"Europe/London"}
     ];
     const flagCache = new Map();
@@ -68,7 +78,7 @@
         TIMEZONES.forEach(item => {
             const time = getEventTime(event, item.zone);
             if (!groups.has(time)) groups.set(time, []);
-            if (!groups.get(time).some(country => country.code === item.code)) groups.get(time).push(item);
+            if (!groups.get(time).some(country => country.zone === item.zone)) groups.get(time).push(item);
         });
         return [...groups.entries()].map(([time, countries]) => ({time, countries}));
     }
@@ -122,7 +132,7 @@
         return { background:[...new Set([original,normalized,core].filter(Boolean))], bosses };
     }
     async function searchPages(term) {
-        const params = new URLSearchParams({action:"query",generator:"search",gsrsearch:term,gsrnamespace:"6",gsrlimit:"30",prop:"imageinfo",iiprop:"url|size",iiurlwidth:"1200",format:"json",origin:"*"});
+        const params = new URLSearchParams({action:"query",generator:"search",gsrsearch:term,gsrnamespace:"6",gsrlimit:"18",prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
         const response = await fetch(API+"?"+params.toString());
         if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
         const data = await response.json();
@@ -151,16 +161,20 @@
         return score;
     }
     async function findBestImage(terms,role) {
+        const searches=await Promise.all(terms.filter(Boolean).map(term=>searchPages(term)));
         const all=[],seen=new Set();
-        for(const term of terms){if(!term)continue;for(const page of await searchPages(term)){if(!seen.has(page.pageid)){seen.add(page.pageid);all.push(page);}}}
+        searches.flat().forEach(page=>{if(!seen.has(page.pageid)){seen.add(page.pageid);all.push(page);}});
         const ranked=all.map(page=>({page,score:Math.max(...terms.map(term=>scoreImage(page,term,role)))})).sort((a,b)=>b.score-a.score);
         const page=ranked.find(item=>item.score>=(role==="background"?15:18))?.page,info=page?.imageinfo?.[0];
         return info?{url:info.thumburl||info.url,title:page.title}:null;
     }
     async function searchDofuspediaImages(event) {
-        const plan=getImagePlan(event),background=await findBestImage(plan.background,"background"),bosses=[];
-        for(const term of plan.bosses){const image=await findBestImage([term],"boss");if(image)bosses.push(image);}
-        return {background,bosses};
+        const plan=getImagePlan(event);
+        const [background,bossResults]=await Promise.all([
+            findBestImage(plan.background,"background"),
+            Promise.all(plan.bosses.map(term=>findBestImage([term],"boss")))
+        ]);
+        return {background,bosses:bossResults.filter(Boolean)};
     }
 
     function loadCanvasImage(url) {
@@ -225,14 +239,22 @@
         const flags=new Map(flagImages);
         let gx=62,gy=371;
         groups.forEach(group=>{
-            const groupWidth=group.countries.length*18+48;
-            if(gx+groupWidth>742){gx=62;gy+=24;}
+            const widths=group.countries.map(country=>country.city?16+Math.max(22,country.city.length*5.2)+5:19);
+            const groupWidth=widths.reduce((sum,width)=>sum+width,0)+43;
+            if(gx+groupWidth>742){gx=62;gy+=23;}
+            let cx=gx;
             group.countries.forEach((country,index)=>{
                 const flag=flags.get(country.code);
-                if(flag)ctx.drawImage(flag,gx+index*18,gy-13,16,12);
+                if(flag)ctx.drawImage(flag,cx,gy-12,15,11);
+                cx+=18;
+                if(country.city){
+                    ctx.fillStyle="#d7dadd";ctx.font="10px Tahoma,sans-serif";ctx.textAlign="left";
+                    ctx.fillText(country.city,cx,gy-1);
+                    cx+=Math.max(22,country.city.length*5.2)+5;
+                }else cx-=0;
             });
-            ctx.fillStyle="#e4e6e8";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
-            ctx.fillText(group.time,gx+group.countries.length*18+4,gy);
+            ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
+            ctx.fillText(group.time,cx+2,gy);
             gx+=groupWidth+12;
         });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
@@ -254,7 +276,7 @@
     function showPreview(canvas,filename,eventName,imageSummary,selected) {
         const old=document.querySelector(".share-preview-modal");if(old)old.remove();
         const modal=document.createElement("div");modal.className="share-preview-modal";
-        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-native">↗ Compartir imagen</button></div></div>';
+        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button><button type="button" class="share-preview-native">↗ Compartir imagen</button></div></div>';
         const image=modal.querySelector(".share-preview-image"),note=modal.querySelector(".share-preview-note"),query=modal.querySelector(".share-image-query"),results=modal.querySelector(".share-image-results"),searchButton=modal.querySelector(".share-image-search-button");
         modal.querySelector(".share-preview-subtitle").textContent=eventName;
         let imageUrl=null,currentBlob=null,currentCanvas=canvas;
@@ -271,6 +293,11 @@
         modal.querySelector(".share-preview-close").addEventListener("click",close);
         modal.addEventListener("click",e=>{if(e.target===modal)close();});
         modal.querySelector(".share-preview-download").addEventListener("click",()=>downloadBlob(currentBlob,filename));
+        modal.querySelector(".share-preview-whatsapp").addEventListener("click",()=>{
+            const whatsappWindow=window.open("https://web.whatsapp.com/","_blank");
+            downloadBlob(currentBlob,filename);
+            if(!whatsappWindow)alert("La imagen se descargó. Permite las ventanas emergentes para abrir WhatsApp Web.");
+        });
         const native=modal.querySelector(".share-preview-native");
         native.addEventListener("click",async()=>{
             try{
