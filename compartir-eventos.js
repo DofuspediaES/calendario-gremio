@@ -43,7 +43,8 @@
     const TIMEZONES = [
         {flag:"🇵🇪",code:"pe",zone:"America/Lima"},
         {flag:"🇨🇴",code:"co",zone:"America/Bogota"},
-        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},
+        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil",city:"Ecuador continental"},
+        {flag:"🇪🇨",code:"ec",zone:"Pacific/Galapagos",city:"Galápagos"},
         {flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
         {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},
         {flag:"🇨🇱",code:"cl",zone:"America/Santiago",city:"Santiago"},
@@ -51,17 +52,15 @@
         {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},
         {flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
         {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},
-        {flag:"🇧🇷",code:"br",zone:"America/Sao_Paulo",city:"São Paulo"},
-        {flag:"🇧🇷",code:"br",zone:"America/Manaus",city:"Manaus"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Tijuana",city:"Tijuana"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Hermosillo",city:"Hermosillo"},
         {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City",city:"CDMX"},
         {flag:"🇲🇽",code:"mx",zone:"America/Cancun",city:"Cancún"},
         {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},
         {flag:"🇵🇦",code:"pa",zone:"America/Panama"},
         {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},
-        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid",city:"Madrid"},
-        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary",city:"Canarias"},
-        {flag:"🇫🇷",code:"fr",zone:"Europe/Paris"},
-        {flag:"🇬🇧",code:"gb",zone:"Europe/London"}
+        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid",city:"Península"},
+        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary",city:"Canarias"}
     ];
     const flagCache = new Map();
 
