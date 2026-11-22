@@ -175,12 +175,11 @@
 
         const titleWidth=bosses?.length?440:675;
         let fontSize=39,lines=[];
-        do{ctx.font="bold "+fontSize+"px Tahoma,sans-serif";lines=wrapCanvasText(ctx,event.name||"Actividad del gremio",titleWidth);if(lines.length<=4||fontSize<=20)break;fontSize-=2;}while(fontSize>18);
+        do{ctx.font="bold "+fontSize+"px Tahoma,sans-serif";lines=wrapCanvasText(ctx,event.name||"Actividad del gremio",titleWidth);if(lines.length<=5||fontSize<=20)break;fontSize-=2;}while(fontSize>18);
         ctx.font="bold "+fontSize+"px Tahoma,sans-serif";ctx.fillStyle="#fff";
-        const lineHeight=Math.round(fontSize*1.12),startY=lines.length>2?112:151;
+        const lineHeight=Math.round(fontSize*1.12),startY=lines.length>2?105:151;
         lines.forEach((line,i)=>ctx.fillText(line,60,startY+i*lineHeight));
         const typeLabel=getEventTypeLabel(event.type);
-        ctx.fillStyle="#f73d00";ctx.font="bold 13px Tahoma,sans-serif";ctx.fillText(typeLabel,60,Math.max(218,startY+lines.length*lineHeight+5));
 
         ctx.strokeStyle="rgba(247,61,0,.72)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(60,250);ctx.lineTo(740,250);ctx.stroke();
         const blocks=[
