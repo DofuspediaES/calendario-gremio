@@ -89,7 +89,7 @@
         const instant = getEventInstant(event);
         if (!instant) return String(event.event_time || "").slice(0,5);
         return new Intl.DateTimeFormat("es-PE",{
-            timeZone:timezone,hour:"2-digit",minute:"2-digit",hour12:false
+            timeZone:timezone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"
         }).format(instant);
     }
 
@@ -251,7 +251,7 @@
         blocks.forEach(block => {
             ctx.fillStyle = "#f73d00";
             ctx.font = "bold 13px Tahoma, sans-serif";
-            ctx.fillText(block.label, block.x, 292);
+            ctx.fillText(truncate(ctx, block.label, block.x === 300 ? 215 : 190), block.x, 292);
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 20px Tahoma, sans-serif";
             ctx.fillText(truncate(ctx, block.value, block.x === 540 ? 190 : 215), block.x, 326);
