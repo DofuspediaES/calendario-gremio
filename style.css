@@ -143,3 +143,23 @@ button:not(:disabled):active { transform:scale(.97); }
 .share-image-result span{font-size:11px;color:#ddd;overflow-wrap:anywhere}
 .share-image-result button{padding:6px;font-size:10px}
 @media(max-width:600px){.share-image-search-form{flex-direction:column}.share-image-search-button{width:100%}.share-image-results{grid-template-columns:1fr}}
+
+/* Vista previa y tarjeta de compartir: identidad Aventuwewos */
+.share-preview-panel{background:#24272b;border:1px solid #555b61;border-top:4px solid #f73d00;color:#f1f1f1}
+.share-preview-panel h2{color:#f73d00;letter-spacing:.2px}
+.share-preview-subtitle{color:#c1c5c9}
+.share-preview-close:hover{color:#f73d00}
+.share-preview-image{background:#1b1d20;border:1px solid #686e74;border-radius:8px}
+.share-preview-note{color:#c2c6ca}
+.share-timezone-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 13px;color:#c9cdd1;font-size:12px;font-weight:700}
+.share-timezone-select{min-width:210px;max-width:100%;padding:9px 12px;background:#30343a;color:#fff;border:1px solid #737980;border-left:3px solid #f73d00;border-radius:6px;font:inherit}
+.share-preview-actions button{border-color:#f73d00;background:#34383d;color:#fff}
+.share-preview-actions button:hover{background:#454b51;border-color:#ff6a36}
+.share-preview-actions .share-preview-whatsapp{background:#176b3a;border-color:#25834c}
+.share-image-search{background:#1d2024;border-color:#555b61}
+.share-image-search summary{color:#ff6a36}
+.share-image-query{background:#17191c;color:#fff;border-color:#626970}
+.share-image-search-button,.share-image-result button{background:#383d43;color:#fff;border-color:#f73d00}
+.share-image-search-button:hover,.share-image-result button:hover{background:#4b5158}
+.share-image-result{background:#292d32;border-color:#4c535a}
+.share-image-result span{color:#f0f1f2}
