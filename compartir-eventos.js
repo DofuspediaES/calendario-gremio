@@ -115,25 +115,40 @@
 
     function getImagePlan(event) {
         const original = cleanText(event.name);
-        const normalized = normalizeTitle(original).replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
+        // Elimina aclaraciones entre paréntesis ANTES de normalizar, porque la normalización convierte los paréntesis en espacios.
+        const withoutNotes = original.replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
+        const normalized = normalizeTitle(withoutNotes);
         const core = normalized.replace(/^(expedicion|mazmorra|dungeon|raid|grupo|salida)\s+(de|del|para)\s+/i,"").trim();
         if (normalized.includes("reina amirukam")) return { background:["Recuerdo de Imagiro"], bosses:["Reina Amirukam"] };
         if (normalized.includes("sombra")) return { background:["Piramide de Sombra"], bosses:["Sombra"] };
         if (normalized.includes("vortex") && normalized.includes("kontatras")) return { background:["Ojo de Vórtex","Ojo de Vortex"], bosses:["Vórtex","Vortex","Conde Kontatrás","Conde Kontatras"] };
-        if (normalized.includes("minotot")) return {
-            background:["Laberinto del Minotauroro","Mazmorra del Minotot","Minotot"],
-            bosses:["Minotot"]
-        };
+        if (normalized.includes("minotot")) return { background:["Laberinto del Minotauroro","Mazmorra del Minotot","Minotot"], bosses:["Minotot"] };
         const terms = core.split(/\s+(?:y|&|\+)\s+/i).map(cleanText).filter(Boolean);
         const bosses = terms.length>1 ? terms : [core || normalized || original];
-        return { background:[...new Set([original,normalized,core].filter(Boolean))], bosses };
+        return { background:[...new Set([original,withoutNotes,normalized,core].filter(Boolean))], bosses };
+    }
+    function getSearchVariants(term) {
+        const clean = cleanText(term);
+        const noNotes = clean.replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
+        const normalized = normalizeTitle(noNotes);
+        const core = normalized
+            .replace(/\b(con|com|sin|sans)\s+(idolo|idol|idole)s?\b/g," ")
+            .replace(/\b(duo|trio|score|logro|exito|exito|exitos|hardcore)\b/g," ")
+            .replace(/\s+/g," ").trim();
+        return [...new Set([clean,noNotes,normalized,core].filter(Boolean))];
     }
     async function searchPages(term) {
-        const params = new URLSearchParams({action:"query",generator:"search",gsrsearch:term,gsrnamespace:"6",gsrlimit:"18",prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
-        const response = await fetch(API+"?"+params.toString());
-        if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
-        const data = await response.json();
-        return Object.values(data.query?.pages||{});
+        const variants = getSearchVariants(term);
+        const results = await Promise.all(variants.map(async query => {
+            const params = new URLSearchParams({action:"query",generator:"search",gsrsearch:query,gsrnamespace:"6",gsrlimit:"50",prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
+            const response = await fetch(API+"?"+params.toString());
+            if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
+            const data = await response.json();
+            return Object.values(data.query?.pages||{});
+        }));
+        const pages = new Map();
+        results.flat().forEach(page => pages.set(page.pageid,page));
+        return [...pages.values()];
     }
     function scoreImage(page, term, role) {
         const title=normalizeTitle(page.title), query=normalizeTitle(term), info=page.imageinfo?.[0]||{};
@@ -167,12 +182,11 @@
             if(role==="background" && terms.some(term=>normalizeTitle(term)==="piramide de sombra")){
                 return title.includes("piramide") && title.includes("sombra") && (item.page.imageinfo?.[0]?.thumbwidth||item.page.imageinfo?.[0]?.width||0)>=500;
             }
-            if(role==="boss" && terms.some(term=>normalizeTitle(term)==="sombra")){
-                return title==="sombra" || title==="sombra dofus" || title==="sombra boss";
-            }
             if(role==="boss"){
                 const words=normalizeTitle(terms[0]).split(" ").filter(word=>word.length>2);
-                return words.length>0 && words.every(word=>title.split(" ").includes(word));
+                const titleWords=title.split(" ");
+                // Basta que el nombre del jefe coincida como palabra completa; se permiten sufijos como "Dofus", "monstruo" o "boss".
+                return words.length>0 && words.every(word=>titleWords.includes(word));
             }
             return true;
         });
