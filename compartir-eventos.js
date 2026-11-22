@@ -62,8 +62,8 @@
 
         const searches = [...new Set([
             name,
-            name.replace(/^(mazmorra|raid|misión|misiones|farm|drop)\\s+(de|del|la|el)\\s+/i, ""),
-            name.replace(/\\b(mazmorra|raid|misión|misiones|farm|drop)\\b/gi, "").trim()
+            name.replace(/^(mazmorra|raid|misión|misiones|farm|drop)\s+(de|del|la|el)\s+/i, ""),
+            name.replace(/\b(mazmorra|raid|misión|misiones|farm|drop)\b/gi, "").trim()
         ].filter(term => term.length >= 3))];
 
         const promise = (async () => {
@@ -85,10 +85,10 @@
                 if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP " + response.status + ").");
                 const data = await response.json();
                 const pages = Object.values(data.query?.pages || {});
-                const words = name.toLocaleLowerCase("es").split(/\\s+/).filter(word => word.length > 2);
+                const words = name.toLocaleLowerCase("es").split(/\s+/).filter(word => word.length > 2);
 
                 const ranked = pages.map(page => {
-                    const title = cleanText(page.title.replace(/^File:/i, "").replace(/\\.[^.]+$/, ""))
+                    const title = cleanText(page.title.replace(/^File:/i, "").replace(/\.[^.]+$/, ""))
                         .toLocaleLowerCase("es").replace(/[_-]/g, " ");
                     const info = page.imageinfo?.[0] || {};
                     const width = info.thumbwidth || info.width || 0;
