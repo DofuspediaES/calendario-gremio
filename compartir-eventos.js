@@ -156,17 +156,37 @@
         return [...variants].filter(Boolean).slice(0,28);
     }
     async function searchPages(term) {
-        const variants = getSearchVariants(term);
-        const results = await Promise.all(variants.map(async query => {
-            const params = new URLSearchParams({action:"query",generator:"search",gsrsearch:query,gsrnamespace:"6",gsrlimit:"50",prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
-            const response = await fetch(API+"?"+params.toString());
-            if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
-            const data = await response.json();
-            return Object.values(data.query?.pages||{});
+        const variants = getSearchVariants(term).slice(0, 18);
+        const searches = await Promise.all(variants.flatMap(query => {
+            const phrase = '"' + query.replace(/"/g, "") + '"';
+            return [phrase, query].map(async search => {
+                const params = new URLSearchParams({
+                    action:"query",list:"search",srsearch:search,srnamespace:"6",
+                    srlimit:"50",format:"json",origin:"*"
+                });
+                const response = await fetch(API+"?"+params.toString());
+                if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
+                const data = await response.json();
+                return (data.query?.search||[]).map(item=>({pageid:item.pageid,title:item.title}));
+            });
         }));
-        const pages = new Map();
-        results.flat().forEach(page => pages.set(page.pageid,page));
-        return [...pages.values()];
+        const matches = new Map();
+        searches.flat().forEach(page=>matches.set(page.pageid,page));
+        const ids = [...matches.keys()];
+        if (!ids.length) return [];
+        const pages = [];
+        for (let i=0;i<ids.length;i+=50) {
+            const params = new URLSearchParams({
+                action:"query",pageids:ids.slice(i,i+50).join("|"),
+                prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",
+                format:"json",origin:"*"
+            });
+            const response = await fetch(API+"?"+params.toString());
+            if (!response.ok) throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+response.status+").");
+            const data = await response.json();
+            pages.push(...Object.values(data.query?.pages||{}));
+        }
+        return pages;
     }
     function scoreImage(page, term, role) {
         const title=normalizeTitle(page.title), query=normalizeTitle(term), info=page.imageinfo?.[0]||{};
