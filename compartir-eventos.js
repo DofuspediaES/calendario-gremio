@@ -35,68 +35,52 @@
     }
 
     const TIMEZONES = [
-        { country:"Perú", flag:"🇵🇪", zone:"America/Lima" },
-        { country:"Colombia", flag:"🇨🇴", zone:"America/Bogota" },
-        { country:"Ecuador", flag:"🇪🇨", zone:"America/Guayaquil" },
-        { country:"Venezuela", flag:"🇻🇪", zone:"America/Caracas" },
-        { country:"Bolivia", flag:"🇧🇴", zone:"America/La_Paz" },
-        { country:"Chile", flag:"🇨🇱", zone:"America/Santiago" },
-        { country:"Argentina", flag:"🇦🇷", zone:"America/Argentina/Buenos_Aires" },
-        { country:"Uruguay", flag:"🇺🇾", zone:"America/Montevideo" },
-        { country:"Paraguay", flag:"🇵🇾", zone:"America/Asuncion" },
-        { country:"Brasil (Brasilia)", flag:"🇧🇷", zone:"America/Sao_Paulo" },
-        { country:"México (CDMX)", flag:"🇲🇽", zone:"America/Mexico_City" },
-        { country:"México (Cancún)", flag:"🇲🇽", zone:"America/Cancun" },
-        { country:"Costa Rica", flag:"🇨🇷", zone:"America/Costa_Rica" },
-        { country:"Panamá", flag:"🇵🇦", zone:"America/Panama" },
-        { country:"República Dominicana", flag:"🇩🇴", zone:"America/Santo_Domingo" },
-        { country:"Estados Unidos (Nueva York)", flag:"🇺🇸", zone:"America/New_York" },
-        { country:"Estados Unidos (Los Ángeles)", flag:"🇺🇸", zone:"America/Los_Angeles" },
-        { country:"Canadá (Toronto)", flag:"🇨🇦", zone:"America/Toronto" },
-        { country:"España", flag:"🇪🇸", zone:"Europe/Madrid" },
-        { country:"Francia", flag:"🇫🇷", zone:"Europe/Paris" },
-        { country:"Reino Unido", flag:"🇬🇧", zone:"Europe/London" }
+        {flag:"🇵🇪",zone:"America/Lima"},{flag:"🇨🇴",zone:"America/Bogota"},
+        {flag:"🇪🇨",zone:"America/Guayaquil"},{flag:"🇻🇪",zone:"America/Caracas"},
+        {flag:"🇧🇴",zone:"America/La_Paz"},{flag:"🇨🇱",zone:"America/Santiago"},
+        {flag:"🇦🇷",zone:"America/Argentina/Buenos_Aires"},{flag:"🇺🇾",zone:"America/Montevideo"},
+        {flag:"🇵🇾",zone:"America/Asuncion"},{flag:"🇧🇷",zone:"America/Sao_Paulo"},
+        {flag:"🇲🇽",zone:"America/Mexico_City"},{flag:"🇲🇽",zone:"America/Cancun"},
+        {flag:"🇨🇷",zone:"America/Costa_Rica"},{flag:"🇵🇦",zone:"America/Panama"},
+        {flag:"🇩🇴",zone:"America/Santo_Domingo"},{flag:"🇺🇸",zone:"America/New_York"},
+        {flag:"🇺🇸",zone:"America/Los_Angeles"},{flag:"🇨🇦",zone:"America/Toronto"},
+        {flag:"🇪🇸",zone:"Europe/Madrid"},{flag:"🇫🇷",zone:"Europe/Paris"},
+        {flag:"🇬🇧",zone:"Europe/London"}
     ];
 
-    function getDefaultTimezone() {
-        const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        return TIMEZONES.some(item => item.zone === local) ? local : "America/Lima";
-    }
-
-    function getTimezoneLabel(zone) {
-        const item = TIMEZONES.find(entry => entry.zone === zone);
-        return item ? item.flag + " " + item.country : zone;
-    }
-
     function getEventInstant(event) {
-        if (typeof eventDateTimeToDate === "function") {
-            return eventDateTimeToDate(event.event_date, event.event_time, event.timezone || "America/Lima");
-        }
-        const [year,month,day] = String(event.event_date || "").split("-").map(Number);
-        const [hours,minutes] = String(event.event_time || "").split(":").map(Number);
+        if (typeof eventDateTimeToDate === "function") return eventDateTimeToDate(event.event_date,event.event_time,event.timezone||"America/Lima");
+        const [year,month,day]=String(event.event_date||"").split("-").map(Number);
+        const [hours,minutes]=String(event.event_time||"").split(":").map(Number);
         if (![year,month,day,hours,minutes].every(Number.isFinite)) return null;
-        const approximate = new Date(Date.UTC(year,month-1,day,hours,minutes));
-        const zone = event.timezone || "America/Lima";
-        const parts = new Intl.DateTimeFormat("en-US",{timeZone:zone,timeZoneName:"longOffset"}).formatToParts(approximate);
-        const offset = parts.find(part=>part.type==="timeZoneName")?.value || "GMT";
-        const match = offset.match(/GMT([+-])(\d{2}):(\d{2})/);
-        if (!match) return approximate;
-        const offsetMinutes = (Number(match[2])*60+Number(match[3]))*(match[1]==="+"?1:-1);
-        return new Date(approximate.getTime()-offsetMinutes*60000);
+        const approximate=new Date(Date.UTC(year,month-1,day,hours,minutes));
+        const zone=event.timezone||"America/Lima";
+        const parts=new Intl.DateTimeFormat("en-US",{timeZone:zone,timeZoneName:"longOffset"}).formatToParts(approximate);
+        const offset=parts.find(part=>part.type==="timeZoneName")?.value||"GMT";
+        const match=offset.match(/GMT([+-])(\d{2}):(\d{2})/);
+        if(!match)return approximate;
+        const mins=(Number(match[2])*60+Number(match[3]))*(match[1]==="+"?1:-1);
+        return new Date(approximate.getTime()-mins*60000);
     }
 
-    function getEventTime(event, timezone = getDefaultTimezone()) {
-        const instant = getEventInstant(event);
-        if (!instant) return String(event.event_time || "").slice(0,5);
-        return new Intl.DateTimeFormat("es-PE",{
-            timeZone:timezone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"
-        }).format(instant);
+    function getEventTime(event,timezone) {
+        const instant=getEventInstant(event);
+        if(!instant)return String(event.event_time||"").slice(0,5);
+        return new Intl.DateTimeFormat("es-PE",{timeZone:timezone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(instant);
     }
 
-    function normalizeTitle(value) {
-        return cleanText(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-            .replace(/^(file|archivo):/i, "").replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
+    function getEventTypeLabel(type) {
+        return ({dungeon:"MAZMORRA",quest:"MISIONES",infinite_dreams:"SUEÑOS INFINITOS",commission:"ENCARGO",raid:"RAID",farm:"DROP / FARM",wanted:"BUSCA Y CAPTURA",other:"OTRA ACTIVIDAD"})[type]||"ACTIVIDAD";
     }
+
+    function wrapCanvasText(ctx,text,maxWidth) {
+        const words=String(text||"").split(/\s+/),lines=[];
+        let line="";
+        for(const word of words){const candidate=line?line+" "+word:word;if(line&&ctx.measureText(candidate).width>maxWidth){lines.push(line);line=word;}else line=candidate;}
+        if(line)lines.push(line);
+        return lines;
+    }
+
     function getImagePlan(event) {
         const original = cleanText(event.name);
         const normalized = normalizeTitle(original).replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
@@ -173,99 +157,41 @@
         ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
     }
 
-    function drawCard(event, participants, background, bosses, timezone = getDefaultTimezone()) {
-        const canvas = document.createElement("canvas");
-        canvas.width = WIDTH;
-        canvas.height = HEIGHT;
-        const ctx = canvas.getContext("2d");
-
-        ctx.fillStyle = "#24272b";
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-        if (background) {
-            drawCover(ctx, background, 0, 0, WIDTH, HEIGHT);
+    function drawCard(event,participants,background,bosses) {
+        const canvas=document.createElement("canvas");canvas.width=WIDTH;canvas.height=HEIGHT;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#24272b";ctx.fillRect(0,0,WIDTH,HEIGHT);
+        if(background)drawCover(ctx,background,0,0,WIDTH,HEIGHT);
+        const overlay=ctx.createLinearGradient(0,0,WIDTH,HEIGHT);
+        overlay.addColorStop(0,"rgba(25,27,30,.96)");overlay.addColorStop(.58,"rgba(25,27,30,.86)");overlay.addColorStop(1,"rgba(25,27,30,.68)");
+        ctx.fillStyle=overlay;ctx.fillRect(0,0,WIDTH,HEIGHT);
+        if(bosses?.length){
+            const maxHeight=250,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
+            bosses.forEach((boss,index)=>{if(!boss)return;const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),w=boss.width*scale,h=boss.height*scale,x=count>1?520+index*(slotWidth+4)+(slotWidth-w)/2:770-w;ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(boss,x,215-h/2,w,h);ctx.restore();});
         }
+        ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.strokeRect(16,16,WIDTH-32,HEIGHT-32);
+        ctx.fillStyle="#f73d00";ctx.fillRect(42,45,5,43);
+        ctx.textAlign="left";ctx.fillStyle="#f73d00";ctx.font="bold 16px Tahoma,sans-serif";ctx.fillText("AVENTUWEWOS DEL WEY WABBIT",60,63);
 
-        const overlay = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-        overlay.addColorStop(0, "rgba(25,27,30,.96)");
-        overlay.addColorStop(.58, "rgba(25,27,30,.84)");
-        overlay.addColorStop(1, "rgba(25,27,30,.62)");
-        ctx.fillStyle = overlay;
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        const titleWidth=bosses?.length?440:675;
+        let fontSize=39,lines=[];
+        do{ctx.font="bold "+fontSize+"px Tahoma,sans-serif";lines=wrapCanvasText(ctx,event.name||"Actividad del gremio",titleWidth);if(lines.length<=4||fontSize<=20)break;fontSize-=2;}while(fontSize>18);
+        ctx.font="bold "+fontSize+"px Tahoma,sans-serif";ctx.fillStyle="#fff";
+        const lineHeight=Math.round(fontSize*1.12),startY=lines.length>2?112:151;
+        lines.forEach((line,i)=>ctx.fillText(line,60,startY+i*lineHeight));
+        const typeLabel=getEventTypeLabel(event.type);
+        ctx.fillStyle="#f73d00";ctx.font="bold 13px Tahoma,sans-serif";ctx.fillText(typeLabel,60,Math.max(218,startY+lines.length*lineHeight+5));
 
-        if (bosses?.length) {
-            const maxHeight=270,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
-            bosses.forEach((boss,index)=>{
-                if(!boss)return;
-                const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),width=boss.width*scale,height=boss.height*scale;
-                const x=count>1?520+index*(slotWidth+4)+(slotWidth-width)/2:770-width;
-                ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;
-                ctx.drawImage(boss,x,218-height/2,width,height);ctx.restore();
-            });
-        }
-
-
-        ctx.strokeStyle = "#f73d00";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(16, 16, WIDTH - 32, HEIGHT - 32);
-
-        ctx.fillStyle = "#f73d00";
-        ctx.fillRect(42, 48, 5, 46);
-
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#f73d00";
-        ctx.font = "bold 17px Tahoma, sans-serif";
-        ctx.fillText("AVENTUWEWOS DEL WEY WABBIT", 60, 66);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 43px Tahoma, sans-serif";
-        ctx.fillText(truncate(ctx, event.name || "Actividad del gremio", bosses?.length ? 460 : 680), 60, 166);
-
-        ctx.fillStyle = "#c4c8cc";
-        ctx.font = "22px Tahoma, sans-serif";
-        const description = cleanText(event.description);
-        if (description) {
-            ctx.fillText(truncate(ctx, description, bosses?.length ? 450 : 660), 62, 211);
-        } else {
-            ctx.fillText("¡Acompáñanos en esta aventura!", 62, 211);
-        }
-
-        ctx.strokeStyle = "rgba(247,61,0,.72)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(60, 250);
-        ctx.lineTo(740, 250);
-        ctx.stroke();
-
-        const date = formatEventDate(event.event_date);
-        const time = getEventTime(event, timezone);
-        const count = participants.length;
-        const capacity = Number(event.capacity) || 0;
-
-        const blocks = [
-            { x: 62, label: "FECHA", value: date },
-            { x: 300, label: "HORA · " + getTimezoneLabel(timezone), value: time },
-            { x: 540, label: "PARTICIPANTES", value: count + " / " + capacity }
+        ctx.strokeStyle="rgba(247,61,0,.72)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(60,250);ctx.lineTo(740,250);ctx.stroke();
+        const blocks=[
+            {x:62,label:"FECHA",value:formatEventDate(event.event_date)},
+            {x:300,label:"TIPO DE ACTIVIDAD",value:typeLabel},
+            {x:540,label:"PARTICIPANTES",value:participants.length+" / "+(Number(event.capacity)||0)}
         ];
-
-        blocks.forEach(block => {
-            ctx.fillStyle = "#f73d00";
-            ctx.font = "bold 13px Tahoma, sans-serif";
-            ctx.fillText(truncate(ctx, block.label, block.x === 300 ? 215 : 190), block.x, 292);
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 20px Tahoma, sans-serif";
-            ctx.fillText(truncate(ctx, block.value, block.x === 540 ? 190 : 215), block.x, 326);
-        });
-
-        ctx.fillStyle = "#f73d00";
-        ctx.font = "bold 16px Tahoma, sans-serif";
-        ctx.fillText("¡TE ESPERAMOS!", 62, 390);
-
-        ctx.textAlign = "right";
-        ctx.fillStyle = "rgba(255,255,255,.72)";
-        ctx.font = "13px Tahoma, sans-serif";
-        ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA", 738, 390);
-
+        blocks.forEach(block=>{ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText(block.label,block.x,280);ctx.fillStyle="#fff";ctx.font="bold 19px Tahoma,sans-serif";ctx.fillText(truncate(ctx,block.value,block.x===540?190:215),block.x,307);});
+        ctx.fillStyle="#f73d00";ctx.font="bold 12px Tahoma,sans-serif";ctx.fillText("HORARIOS",62,341);
+        TIMEZONES.forEach((item,index)=>{const col=index%5,row=Math.floor(index/5),x=62+col*135,y=369+row*23;ctx.textAlign="left";ctx.font="16px Tahoma,sans-serif";ctx.fillStyle="#fff";ctx.fillText(item.flag,x,y);ctx.font="bold 13px Tahoma,sans-serif";ctx.fillStyle="#e4e6e8";ctx.fillText(getEventTime(event,item.zone),x+31,y);});
+        ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
         return canvas;
     }
 
@@ -280,33 +206,28 @@
         setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
-    function makeShareText(event, timezone = getDefaultTimezone()) {
-        const date = formatEventDate(event.event_date);
-        const time = getEventTime(event, timezone);
-        const link = location.href.split("#")[0];
-        return "⚔️ " + event.name + "\n📅 " + date + "\n🕐 " + getTimezoneLabel(timezone) + ": " + time + "\n\nCalendario del gremio: " + link;
+    function makeShareText(event) {
+        const times=TIMEZONES.map(item=>item.flag+" "+getEventTime(event,item.zone)).join("  ·  ");
+        return "⚔️ "+event.name+" ["+getEventTypeLabel(event.type)+"]\\n📅 "+formatEventDate(event.event_date)+"\\n"+times+"\\n\\nCalendario del gremio: "+location.href.split("#")[0];
     }
 
     function showPreview(canvas,filename,shareText,eventName,imageSummary,selected) {
         const old=document.querySelector(".share-preview-modal");if(old)old.remove();
         const modal=document.createElement("div");modal.className="share-preview-modal";
-        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><label class="share-timezone-control">Hora de la tarjeta<select class="share-timezone-select"></select></label><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button><button type="button" class="share-preview-native">↗ Compartir…</button></div></div>';
-        const image=modal.querySelector(".share-preview-image"),note=modal.querySelector(".share-preview-note"),query=modal.querySelector(".share-image-query"),results=modal.querySelector(".share-image-results"),searchButton=modal.querySelector(".share-image-search-button"),timezoneSelect=modal.querySelector(".share-timezone-select");
+        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button><button type="button" class="share-preview-native">↗ Compartir…</button></div></div>';
+        const image=modal.querySelector(".share-preview-image"),note=modal.querySelector(".share-preview-note"),query=modal.querySelector(".share-image-query"),results=modal.querySelector(".share-image-results"),searchButton=modal.querySelector(".share-image-search-button");
         modal.querySelector(".share-preview-subtitle").textContent=eventName;
-        let imageUrl=null,currentBlob=null,currentCanvas=canvas,currentTimezone=getDefaultTimezone(),currentShareText=shareText;
-        TIMEZONES.forEach(item=>{const option=document.createElement("option");option.value=item.zone;option.textContent=item.flag+" "+item.country;timezoneSelect.appendChild(option);});
-        timezoneSelect.value=currentTimezone;
+        let imageUrl=null,currentBlob=null,currentCanvas=canvas,currentShareText=shareText;
         const updateNative=()=>{const file=currentBlob?new File([currentBlob],filename,{type:"image/png"}):null;native.hidden=!file||!navigator.share||!navigator.canShare||!navigator.canShare({files:[file]});};
         const update=async()=>{
             currentBlob=await new Promise((resolve,reject)=>currentCanvas.toBlob(v=>v?resolve(v):reject(new Error("No se pudo generar el PNG.")),"image/png"));
             if(imageUrl)URL.revokeObjectURL(imageUrl);imageUrl=URL.createObjectURL(currentBlob);image.src=imageUrl;updateNative();
         };
         const redraw=async()=>{
-            currentCanvas=drawCard(window.__shareEventData.event,window.__shareEventData.participants,selected.background,selected.bosses,currentTimezone);
-            currentShareText=makeShareText(window.__shareEventData.event,currentTimezone);
+            currentCanvas=drawCard(window.__shareEventData.event,window.__shareEventData.participants,selected.background,selected.bosses);
+            currentShareText=makeShareText(window.__shareEventData.event);
             await update();
         };
-        timezoneSelect.addEventListener("change",async()=>{currentTimezone=timezoneSelect.value;await redraw();note.textContent="Hora mostrada: "+getTimezoneLabel(currentTimezone)+" ("+getEventTime(window.__shareEventData.event,currentTimezone)+").";});
         const close=()=>{modal.remove();if(imageUrl)URL.revokeObjectURL(imageUrl);};
         modal.querySelector(".share-preview-close").addEventListener("click",close);
         modal.addEventListener("click",e=>{if(e.target===modal)close();});
@@ -350,14 +271,14 @@
                 for(const boss of found.bosses||[]){try{selected.bosses.push(await loadCanvasImage(boss.url));}catch(e){console.warn("No se pudo cargar jefe:",e);}}
                 if(!selected.background&&!selected.bosses.length)warning="No se encontraron imágenes compatibles para esta actividad.";
             }catch(e){console.warn("Imágenes de Dofuspedia no disponibles:",e);warning=e.message;}
-            const canvas=drawCard(event,participants,selected.background,selected.bosses,getDefaultTimezone());
+            const canvas=drawCard(event,participants,selected.background,selected.bosses);
             const filename=("evento-"+cleanText(event.name)).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9-]+/g,"-").replace(/^-|-$/g,"").toLowerCase()+".png";
             const summary=selected.background&&selected.bosses.length?"Se utilizó el fondo y "+selected.bosses.length+" imagen(es) de jefe. Puedes cambiarlos o añadir otros."
                 :selected.background?"Se utilizó el fondo de Dofuspedia. Puedes buscar y añadir jefes."
                 :selected.bosses.length?"Se utilizaron "+selected.bosses.length+" imagen(es) de jefe. Puedes buscar un fondo."
                 :"La tarjeta se generó sin imágenes. Puedes buscarlas manualmente. "+warning;
             window.__shareEventData={event,participants};
-            showPreview(canvas,filename,makeShareText(event,getDefaultTimezone()),event.name,summary,selected);
+            showPreview(canvas,filename,makeShareText(event),event.name,summary,selected);
         }catch(error){console.error("Error preparando evento:",error);alert("No se pudo preparar la imagen: "+error.message);}
         finally{button.disabled=false;button.textContent=original;}
     }
