@@ -147,15 +147,42 @@
         const clean=cleanText(term);
         const noNotes=cleanBossTerm(clean);
         const normalized=normalizeTitle(noNotes);
-        // Solo consulta el término original y su versión sin tildes.
-        // La búsqueda anterior generaba hasta 64 variantes y lanzaba 128
-        // peticiones simultáneas, provocando bloqueos o respuestas fallidas de la API.
-        return [...new Set([clean,noNotes,normalized].filter(Boolean))].slice(0,3);
+        const accentOptions={a:["a","á"],e:["e","é"],i:["i","í"],o:["o","ó"],u:["u","ú","ü"]};
+        const variants=new Set([clean,noNotes,normalized].filter(Boolean));
+        // Genera combinaciones con y sin tilde, pero limita el volumen de consultas.
+        const words=normalized.split(/\s+/).filter(Boolean);
+        let phrases=[""];
+        for(const word of words){
+            let wordVariants=[""];
+            for(const char of word){
+                const options=accentOptions[char]||[char];
+                const next=[];
+                for(const prefix of wordVariants){
+                    for(const option of options){
+                        next.push(prefix+option);
+                        if(next.length>=24)break;
+                    }
+                    if(next.length>=24)break;
+                }
+                wordVariants=next;
+            }
+            const nextPhrases=[];
+            for(const phrase of phrases){
+                for(const variant of wordVariants){
+                    nextPhrases.push((phrase+" "+variant).trim());
+                    if(nextPhrases.length>=24)break;
+                }
+                if(nextPhrases.length>=24)break;
+            }
+            phrases=nextPhrases;
+        }
+        phrases.forEach(value=>variants.add(value));
+        return [...variants].filter(Boolean).slice(0,24);
     }
     async function searchPages(term) {
-        const variants=getSearchVariants(term).slice(0,64);
+        const variants=getSearchVariants(term);
         const tasks=variants.map(async query=>{
-            const params=new URLSearchParams({action:"query",list:"search",srsearch:query,srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
+            const params=new URLSearchParams({action:"query",list:"search",srsearch:'"' + query.replace(/"/g,"") + '"',srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
             const response=await fetch(API+"?"+params.toString());
             if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
             const data=await response.json();
