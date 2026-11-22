@@ -164,7 +164,7 @@
         ctx.font = "22px Tahoma, sans-serif";
         const description = cleanText(event.description);
         if (description) {
-            ctx.fillText(truncate(ctx, description, boss ? 470 : 660), 62, 211);
+            ctx.fillText(truncate(ctx, description, bosses?.length ? 450 : 660), 62, 211);
         } else {
             ctx.fillText("¡Acompáñanos en esta aventura!", 62, 211);
         }
