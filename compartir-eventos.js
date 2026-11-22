@@ -43,24 +43,24 @@
     const TIMEZONES = [
         {flag:"🇵🇪",code:"pe",zone:"America/Lima"},
         {flag:"🇨🇴",code:"co",zone:"America/Bogota"},
-        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil",city:"Ecuador continental"},
-        {flag:"🇪🇨",code:"ec",zone:"Pacific/Galapagos",city:"Galápagos"},
+        {flag:"🇪🇨",code:"ec",zone:"America/Guayaquil"},
+        {flag:"🇪🇨",code:"ec",zone:"Pacific/Galapagos"},
         {flag:"🇻🇪",code:"ve",zone:"America/Caracas"},
         {flag:"🇧🇴",code:"bo",zone:"America/La_Paz"},
-        {flag:"🇨🇱",code:"cl",zone:"America/Santiago",city:"Santiago"},
-        {flag:"🇨🇱",code:"cl",zone:"Pacific/Easter",city:"Isla de Pascua"},
+        {flag:"🇨🇱",code:"cl",zone:"America/Santiago"},
+        {flag:"🇨🇱",code:"cl",zone:"Pacific/Easter"},
         {flag:"🇦🇷",code:"ar",zone:"America/Argentina/Buenos_Aires"},
         {flag:"🇺🇾",code:"uy",zone:"America/Montevideo"},
         {flag:"🇵🇾",code:"py",zone:"America/Asuncion"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Tijuana",city:"Tijuana"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Hermosillo",city:"Hermosillo"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City",city:"CDMX"},
-        {flag:"🇲🇽",code:"mx",zone:"America/Cancun",city:"Cancún"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Tijuana"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Hermosillo"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Mexico_City"},
+        {flag:"🇲🇽",code:"mx",zone:"America/Cancun"},
         {flag:"🇨🇷",code:"cr",zone:"America/Costa_Rica"},
         {flag:"🇵🇦",code:"pa",zone:"America/Panama"},
         {flag:"🇩🇴",code:"do",zone:"America/Santo_Domingo"},
-        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid",city:"Península"},
-        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary",city:"Canarias"}
+        {flag:"🇪🇸",code:"es",zone:"Europe/Madrid"},
+        {flag:"🇪🇸",code:"es",zone:"Atlantic/Canary"}
     ];
     const flagCache = new Map();
 
@@ -79,7 +79,8 @@
             if (!groups.has(time)) groups.set(time, []);
             if (!groups.get(time).some(country => country.zone === item.zone)) groups.get(time).push(item);
         });
-        return [...groups.entries()].map(([time, countries]) => ({time, countries}));
+        return [...groups.entries()].map(([time, countries]) => ({time, countries}))
+            .sort((a,b)=>a.time.localeCompare(b.time));
     }
 
     function getEventInstant(event) {
@@ -164,7 +165,21 @@
         const all=[],seen=new Set();
         searches.flat().forEach(page=>{if(!seen.has(page.pageid)){seen.add(page.pageid);all.push(page);}});
         const ranked=all.map(page=>({page,score:Math.max(...terms.map(term=>scoreImage(page,term,role)))})).sort((a,b)=>b.score-a.score);
-        const page=ranked.find(item=>item.score>=(role==="background"?15:18))?.page,info=page?.imageinfo?.[0];
+        const candidates=ranked.filter(item=>{
+            const title=normalizeTitle(item.page.title);
+            if(role==="background" && terms.some(term=>normalizeTitle(term)==="piramide de sombra")){
+                return title.includes("piramide") && title.includes("sombra") && (item.page.imageinfo?.[0]?.thumbwidth||item.page.imageinfo?.[0]?.width||0)>=500;
+            }
+            if(role==="boss" && terms.some(term=>normalizeTitle(term)==="sombra")){
+                return title==="sombra" || title==="sombra dofus" || title==="sombra boss";
+            }
+            if(role==="boss"){
+                const words=normalizeTitle(terms[0]).split(" ").filter(word=>word.length>2);
+                return words.length>0 && words.every(word=>title.split(" ").includes(word));
+            }
+            return true;
+        });
+        const page=candidates.find(item=>item.score>=(role==="background"?15:18))?.page,info=page?.imageinfo?.[0];
         return info?{url:info.thumburl||info.url,title:page.title}:null;
     }
     async function searchDofuspediaImages(event) {
@@ -238,19 +253,13 @@
         const flags=new Map(flagImages);
         let gx=62,gy=371;
         groups.forEach(group=>{
-            const widths=group.countries.map(country=>country.city?16+Math.max(22,country.city.length*5.2)+5:19);
-            const groupWidth=widths.reduce((sum,width)=>sum+width,0)+43;
+            const groupWidth=group.countries.length*18+43;
             if(gx+groupWidth>742){gx=62;gy+=23;}
             let cx=gx;
-            group.countries.forEach((country,index)=>{
+            group.countries.forEach(country=>{
                 const flag=flags.get(country.code);
                 if(flag)ctx.drawImage(flag,cx,gy-12,15,11);
                 cx+=18;
-                if(country.city){
-                    ctx.fillStyle="#d7dadd";ctx.font="10px Tahoma,sans-serif";ctx.textAlign="left";
-                    ctx.fillText(country.city,cx,gy-1);
-                    cx+=Math.max(22,country.city.length*5.2)+5;
-                }else cx-=0;
             });
             ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
             ctx.fillText(group.time,cx+2,gy);
