@@ -147,25 +147,44 @@
         const clean=cleanText(term);
         const noNotes=cleanBossTerm(clean);
         const normalized=normalizeTitle(noNotes);
-        const accentMap={a:["á"],e:["é"],i:["í"],o:["ó"],u:["ú","ü"]};
-        const variants=new Set([clean,stripEventAnnotations(clean),noNotes,normalized]);
-        // Genera variantes ortográficas con y sin tildes para cada vocal, no solo para ejemplos conocidos.
-        let generated=[normalized];
-        for(let i=0;i<normalized.length;i++){
-            const accents=accentMap[normalized[i]];
-            if(!accents)continue;
-            const additions=[];
-            for(const current of generated){
-                for(const accent of accents)additions.push(current.slice(0,i)+accent+current.slice(i+1));
+        const accentOptions={a:["a","á"],e:["e","é"],i:["i","í"],o:["o","ó"],u:["u","ú","ü"]};
+        const variants=new Set();
+        if(clean)variants.add(clean);
+        if(noNotes)variants.add(noNotes);
+        if(normalized)variants.add(normalized);
+        // Genera combinaciones completas por palabra: admite cualquier tilde omitida o añadida.
+        const words=normalized.split(/\s+/).filter(Boolean);
+        let phrases=[""];
+        for(const word of words){
+            let wordVariants=[""];
+            for(const char of word){
+                const options=accentOptions[char]||[char];
+                const next=[];
+                for(const prefix of wordVariants){
+                    for(const option of options){
+                        next.push(prefix+option);
+                        if(next.length>=48)break;
+                    }
+                    if(next.length>=48)break;
+                }
+                wordVariants=next;
             }
-            generated.push(...additions);
-            generated=generated.slice(0,24);
+            const nextPhrases=[];
+            for(const phrase of phrases){
+                for(const variant of wordVariants){
+                    nextPhrases.push((phrase+" "+variant).trim());
+                    if(nextPhrases.length>=64)break;
+                }
+                if(nextPhrases.length>=64)break;
+            }
+            phrases=nextPhrases;
         }
-        generated.forEach(value=>variants.add(value));
-        return [...variants].filter(Boolean).slice(0,24);
+        // Primero el nombre sin tildes, después las variantes completas con acentos.
+        phrases.forEach(value=>variants.add(value));
+        return [...variants].filter(Boolean).slice(0,64);
     }
     async function searchPages(term) {
-        const variants=getSearchVariants(term).slice(0,12);
+        const variants=getSearchVariants(term).slice(0,64);
         const tasks=variants.flatMap(query=>{
             const phrase='"'+query.replace(/"/g,"")+'"';
             return [phrase,query].map(async search=>{
