@@ -49,7 +49,7 @@
         const name = normalizeTitle(event.name);
         if (name.includes("reina amirukam")) return { background:["Recuerdo de Imagiro"], bosses:["Reina Amirukam"] };
         if (name.includes("sombra")) return { background:["Piramide de Sombra"], bosses:["Sombra"] };
-        if (name.includes("vortex") && name.includes("kontatras")) return { background:["Ojo de Vortex"], bosses:["Vortex","Conde Kontatras"] };
+        if (name.includes("vortex") && name.includes("kontatras")) return { background:["Ojo de Vórtex","Ojo de Vortex"], bosses:["Vórtex","Vortex","Conde Kontatrás","Conde Kontatras"] };
         const terms = cleanText(event.name).split(/\s+(?:y|&|\+)\s+/i).map(cleanText).filter(Boolean);
         return { background:[cleanText(event.name)], bosses:terms.length>1?terms:[cleanText(event.name)] };
     }
@@ -63,7 +63,7 @@
     function scoreImage(page, term, role) {
         const title=normalizeTitle(page.title), query=normalizeTitle(term), info=page.imageinfo?.[0]||{};
         const width=info.thumbwidth||info.width||0, height=info.thumbheight||info.height||0, ratio=width&&height?width/height:0;
-        const excluded=/\b(lana|piel|hueso|cola|cuerno|ojo|diente|pluma|escama|recurso|ingrediente|capa|sombrero|amuleto|anillo|botas|cinturon|escudo|espada|martillo|set|conjunto|receta|pocima|gema|runa|llave|ficha|moneda|interfaz|inventario|icono|miniatura|thumb)\b/i;
+        const excluded=/\b(lana|piel|hueso|cola|cuerno|diente|pluma|escama|recurso|ingrediente|capa|sombrero|amuleto|anillo|botas|cinturon|escudo|espada|martillo|set|conjunto|receta|pocima|gema|runa|llave|ficha|moneda|interfaz|inventario|icono|miniatura|thumb)\b/i;
         let score=title===query?24:title.includes(query)?15:0;
         for(const word of query.split(/\s+/).filter(w=>w.length>2))if(title.includes(word))score+=4;
         if(excluded.test(title))score-=30;
@@ -133,11 +133,11 @@
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
         if (bosses?.length) {
-            const maxHeight=270,count=bosses.length,slotWidth=count>1?118:245;
+            const maxHeight=270,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
             bosses.forEach((boss,index)=>{
                 if(!boss)return;
                 const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),width=boss.width*scale,height=boss.height*scale;
-                const x=count>1?550+index*125+(slotWidth-width)/2:770-width;
+                const x=count>1?520+index*(slotWidth+4)+(slotWidth-width)/2:770-width;
                 ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;
                 ctx.drawImage(boss,x,218-height/2,width,height);ctx.restore();
             });
