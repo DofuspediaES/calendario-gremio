@@ -57,56 +57,64 @@
     }
 
     async function searchDofuspediaImage(event) {
-        const term = getSearchTerms(event);
-        if (imageCache.has(term)) return imageCache.get(term);
+        const name = cleanText(event.name);
+        if (imageCache.has(name)) return imageCache.get(name);
 
-        const params = new URLSearchParams({
-            action: "query",
-            generator: "search",
-            gsrsearch: term,
-            gsrnamespace: "6",
-            gsrlimit: "12",
-            prop: "imageinfo",
-            iiprop: "url",
-            iiurlwidth: "1200",
-            format: "json",
-            origin: "*"
-        });
+        const searches = [...new Set([
+            name,
+            name.replace(/^(mazmorra|raid|misión|misiones|farm|drop)\\s+(de|del|la|el)\\s+/i, ""),
+            name.replace(/\\b(mazmorra|raid|misión|misiones|farm|drop)\\b/gi, "").trim()
+        ].filter(term => term.length >= 3))];
 
         const promise = (async () => {
-            const response = await fetch(API + "?" + params.toString());
-            if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP " + response.status + ").");
-            const data = await response.json();
-            const pages = Object.values(data.query?.pages || {});
-            if (!pages.length) return null;
+            for (const term of searches) {
+                const params = new URLSearchParams({
+                    action: "query",
+                    generator: "search",
+                    gsrsearch: term,
+                    gsrnamespace: "6",
+                    gsrlimit: "20",
+                    prop: "imageinfo",
+                    iiprop: "url",
+                    iiurlwidth: "1200",
+                    format: "json",
+                    origin: "*"
+                });
 
-            const normalizedName = cleanText(event.name).toLocaleLowerCase("es");
-            const ranked = pages.map(page => {
-                const title = cleanText(page.title.replace(/^File:/i, "").replace(/\.[^.]+$/, ""))
-                    .toLocaleLowerCase("es").replace(/[_-]/g, " ");
-                let score = 0;
-                if (title.includes(normalizedName)) score += 10;
-                for (const word of normalizedName.split(" ").filter(w => w.length > 2)) {
-                    if (title.includes(word)) score += 2;
+                const response = await fetch(API + "?" + params.toString());
+                if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP " + response.status + ").");
+                const data = await response.json();
+                const pages = Object.values(data.query?.pages || {});
+                const words = name.toLocaleLowerCase("es").split(/\\s+/).filter(word => word.length > 2);
+
+                const ranked = pages.map(page => {
+                    const title = cleanText(page.title.replace(/^File:/i, "").replace(/\\.[^.]+$/, ""))
+                        .toLocaleLowerCase("es").replace(/[_-]/g, " ");
+                    let score = 0;
+                    if (title.includes(name.toLocaleLowerCase("es"))) score += 10;
+                    for (const word of words) {
+                        if (title.includes(word)) score += 3;
+                    }
+                    if (/icono|icon|miniatura|thumb|inventario|item|objeto|interfaz/i.test(title)) score -= 8;
+                    if (/captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title)) score += 4;
+                    if (/monstruo|boss|jefe/i.test(title)) score += 1;
+                    return { page, score };
+                }).filter(item => item.score >= 3).sort((a, b) => b.score - a.score);
+
+                for (const item of ranked) {
+                    const info = item.page.imageinfo?.[0];
+                    const url = info?.thumburl || info?.url;
+                    if (url) return { url, title: item.page.title, score: item.score };
                 }
-                if (/icono|icon|miniatura|thumb|inventario|item|objeto/i.test(title)) score -= 5;
-                if (/captura|zona|mazmorra|monstruo|boss|jefe|mapa|fondo/i.test(title)) score += 2;
-                return { page, score };
-            }).sort((a, b) => b.score - a.score);
-
-            for (const item of ranked) {
-                const info = item.page.imageinfo?.[0];
-                const url = info?.thumburl || info?.url;
-                if (url) return { url, title: item.page.title, score: item.score };
             }
             return null;
         })();
 
-        imageCache.set(term, promise);
+        imageCache.set(name, promise);
         try {
             return await promise;
         } catch (error) {
-            imageCache.delete(term);
+            imageCache.delete(name);
             throw error;
         }
     }
