@@ -43,37 +43,78 @@
 
     function getSearchTerms(event) {
         const name = cleanText(event.name);
-        const typeNames = {
-            dungeon: "mazmorra",
-            raid: "jefe monstruo",
-            quest: "misión",
-            infinite_dreams: "sueños infinitos monstruo",
-            wanted: "busca y captura monstruo",
-            farm: "monstruo",
-            commission: "gremio",
-            other: ""
-        };
-        return [name, typeNames[event.type] || ""].filter(Boolean).join(" ");
+        const cleanName = name
+            .replace(/^(mazmorra|dungeon|raid|misión|misiones|farm|drop|jefe|zona)\s+(de|del|la|el)\s+/i, "")
+            .replace(/^(mazmorra|dungeon|raid|misión|misiones|farm|drop|jefe|zona)\s+/i, "")
+            .trim();
+        return [...new Set([cleanName, name].filter(term => term.length >= 3))];
     }
 
-    async function searchDofuspediaImage(event) {
-        const name = cleanText(event.name);
-        if (imageCache.has(name)) return imageCache.get(name);
+    function normalizeTitle(value) {
+        return cleanText(value)
+            .replace(/^(File|Archivo):/i, "")
+            .replace(/\.[^.]+$/, "")
+            .replace(/[_-]/g, " ")
+            .toLocaleLowerCase("es");
+    }
 
-        const searches = [...new Set([
-            name,
-            name.replace(/^(mazmorra|raid|misión|misiones|farm|drop)\s+(de|del|la|el)\s+/i, ""),
-            name.replace(/\b(mazmorra|raid|misión|misiones|farm|drop)\b/gi, "").trim()
-        ].filter(term => term.length >= 3))];
+    function scoreImage(page, searchTerm, role) {
+        const title = normalizeTitle(page.title);
+        const normalizedTerm = normalizeTitle(searchTerm);
+        const info = page.imageinfo?.[0] || {};
+        const width = info.thumbwidth || info.width || 0;
+        const height = info.thumbheight || info.height || 0;
+        const ratio = width && height ? width / height : 0;
+        const excluded = /\b(lana|piel|hueso|cola|cuerno|ojo|diente|pluma|escama|recurso|ingrediente|capa|sombrero|amuleto|anillo|botas|cinturon|escudo|espada|martillo|set|conjunto|receta|pocima|pócima|gema|runa|llave|ficha|moneda|interfaz|inventario|icono|miniatura|thumb)\b/i;
+
+        let score = 0;
+        if (title === normalizedTerm) score += 18;
+        else if (title.includes(normalizedTerm)) score += 12;
+
+        const words = normalizedTerm.split(/\s+/).filter(word => word.length > 2);
+        for (const word of words) {
+            if (title.includes(word)) score += 4;
+        }
+
+        if (excluded.test(title)) score -= 30;
+
+        if (role === "background") {
+            if (ratio >= 1.35) score += 12;
+            else if (ratio >= 1.1) score += 5;
+            else score -= 8;
+
+            if (/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala|entorno/i.test(title)) score += 8;
+            if (/monstruo|boss|jefe|personaje|npc/i.test(title)) score -= 3;
+            if (width >= 900) score += 5;
+        } else {
+            if (ratio >= 0.75 && ratio <= 1.25) score += 10;
+            else if (ratio < 0.75) score += 4;
+            else score -= 8;
+
+            if (/monstruo|boss|jefe|personaje/i.test(title)) score += 8;
+            if (/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title)) score -= 5;
+            if (width >= 400) score += 3;
+        }
+
+        return score;
+    }
+
+    async function searchDofuspediaImages(event) {
+        const cacheKey = cleanText(event.name);
+        if (imageCache.has(cacheKey)) return imageCache.get(cacheKey);
 
         const promise = (async () => {
-            for (const term of searches) {
+            const terms = getSearchTerms(event);
+            const candidates = [];
+            const seen = new Set();
+
+            for (const term of terms) {
                 const params = new URLSearchParams({
                     action: "query",
                     generator: "search",
                     gsrsearch: term,
                     gsrnamespace: "6",
-                    gsrlimit: "20",
+                    gsrlimit: "30",
                     prop: "imageinfo",
                     iiprop: "url|size",
                     iiurlwidth: "1200",
@@ -83,45 +124,44 @@
 
                 const response = await fetch(API + "?" + params.toString());
                 if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP " + response.status + ").");
+
                 const data = await response.json();
                 const pages = Object.values(data.query?.pages || {});
-                const words = name.toLocaleLowerCase("es").split(/\s+/).filter(word => word.length > 2);
 
-                const ranked = pages.map(page => {
-                    const title = cleanText(page.title.replace(/^(File|Archivo):/i, "").replace(/\.[^.]+$/, ""))
-                        .toLocaleLowerCase("es").replace(/[_-]/g, " ");
-                    const info = page.imageinfo?.[0] || {};
-                    const width = info.thumbwidth || info.width || 0;
-                    const height = info.thumbheight || info.height || 0;
-                    const ratio = width && height ? width / height : 0;
-                    let score = 0;
-                    if (title.includes(name.toLocaleLowerCase("es"))) score += 10;
-                    for (const word of words) {
-                        if (title.includes(word)) score += 3;
-                    }
-                    if (/icono|icon|miniatura|thumb|inventario|item|objeto|interfaz/i.test(title)) score -= 8;
-                    if (/captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title)) score += 5;
-                    if (/monstruo|boss|jefe|personaje|npc/i.test(title)) score -= 2;
-                    if (ratio >= 1.35) score += 5;
-                    else if (ratio > 0 && ratio < 1) score -= 4;
-                    if (width >= 900) score += 2;
-                    return { page, score };
-                }).filter(item => item.score >= 3).sort((a, b) => b.score - a.score);
-
-                for (const item of ranked) {
-                    const info = item.page.imageinfo?.[0];
-                    const url = info?.thumburl || info?.url;
-                    if (url) return { url, title: item.page.title, score: item.score };
+                for (const page of pages) {
+                    if (seen.has(page.pageid)) continue;
+                    seen.add(page.pageid);
+                    candidates.push(page);
                 }
             }
-            return null;
+
+            const rank = role => candidates
+                .map(page => ({
+                    page,
+                    score: Math.max(...terms.map(term => scoreImage(page, term, role)))
+                }))
+                .filter(item => item.score >= (role === "background" ? 15 : 18))
+                .sort((a, b) => b.score - a.score);
+
+            const bestBackground = rank("background")[0]?.page;
+            const bestBoss = rank("boss")[0]?.page;
+
+            const getUrl = page => {
+                const info = page?.imageinfo?.[0];
+                return info?.thumburl || info?.url || null;
+            };
+
+            return {
+                background: bestBackground ? { url: getUrl(bestBackground), title: bestBackground.title } : null,
+                boss: bestBoss ? { url: getUrl(bestBoss), title: bestBoss.title } : null
+            };
         })();
 
-        imageCache.set(name, promise);
+        imageCache.set(cacheKey, promise);
         try {
             return await promise;
         } catch (error) {
-            imageCache.delete(name);
+            imageCache.delete(cacheKey);
             throw error;
         }
     }
@@ -145,7 +185,7 @@
         ctx.drawImage(image, sx, sy, sw, sh, x, y, width, height);
     }
 
-    function drawCard(event, participants, background) {
+    function drawCard(event, participants, background, boss) {
         const canvas = document.createElement("canvas");
         canvas.width = WIDTH;
         canvas.height = HEIGHT;
@@ -161,9 +201,23 @@
         const overlay = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
         overlay.addColorStop(0, "rgba(12,13,16,.96)");
         overlay.addColorStop(.58, "rgba(12,13,16,.78)");
-        overlay.addColorStop(1, "rgba(12,13,16,.42)");
+        overlay.addColorStop(1, "rgba(12,13,16,.52)");
         ctx.fillStyle = overlay;
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        if (boss) {
+            const maxWidth = 245;
+            const maxHeight = 285;
+            const scale = Math.min(maxWidth / boss.width, maxHeight / boss.height);
+            const width = boss.width * scale;
+            const height = boss.height * scale;
+            ctx.save();
+            ctx.shadowColor = "rgba(0,0,0,.65)";
+            ctx.shadowBlur = 22;
+            ctx.shadowOffsetY = 8;
+            ctx.drawImage(boss, 770 - width, 218 - height / 2, width, height);
+            ctx.restore();
+        }
 
         ctx.strokeStyle = "#8d7548";
         ctx.lineWidth = 2;
@@ -179,13 +233,13 @@
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 43px Tahoma, sans-serif";
-        ctx.fillText(truncate(ctx, event.name || "Actividad del gremio", 680), 60, 166);
+        ctx.fillText(truncate(ctx, event.name || "Actividad del gremio", boss ? 490 : 680), 60, 166);
 
         ctx.fillStyle = "#d4d0c8";
         ctx.font = "22px Tahoma, sans-serif";
         const description = cleanText(event.description);
         if (description) {
-            ctx.fillText(truncate(ctx, description, 660), 62, 211);
+            ctx.fillText(truncate(ctx, description, boss ? 470 : 660), 62, 211);
         } else {
             ctx.fillText("¡Acompáñanos en esta aventura!", 62, 211);
         }
@@ -258,19 +312,37 @@
                 : [];
 
             let background = null;
+            let boss = null;
             let imageWarning = "";
 
             try {
-                const found = await searchDofuspediaImage(event);
-                if (found?.url) {
-                    background = await loadCanvasImage(found.url);
+                const found = await searchDofuspediaImages(event);
+
+                if (found?.background?.url) {
+                    try {
+                        background = await loadCanvasImage(found.background.url);
+                    } catch (error) {
+                        console.warn("No se pudo cargar el fondo:", error);
+                    }
+                }
+
+                if (found?.boss?.url) {
+                    try {
+                        boss = await loadCanvasImage(found.boss.url);
+                    } catch (error) {
+                        console.warn("No se pudo cargar la imagen del jefe:", error);
+                    }
+                }
+
+                if (!background && !boss) {
+                    imageWarning = "No se encontraron imágenes compatibles para esta actividad.";
                 }
             } catch (error) {
-                console.warn("Imagen de Dofuspedia no disponible:", error);
+                console.warn("Imágenes de Dofuspedia no disponibles:", error);
                 imageWarning = error.message;
             }
 
-            const canvas = drawCard(event, participants, background);
+            const canvas = drawCard(event, participants, background, boss);
             const blob = await new Promise((resolve, reject) => {
                 canvas.toBlob(value => value ? resolve(value) : reject(new Error("No se pudo generar el PNG.")), "image/png");
             });
@@ -290,8 +362,10 @@
                 const whatsappUrl = "https://wa.me/?text=" + encodeURIComponent(shareText);
                 window.open(whatsappUrl, "_blank", "noopener");
                 alert("La imagen se ha descargado. Adjunta el PNG en el grupo de WhatsApp.\n\n" +
-                    (background ? "Se utilizó una imagen de Dofuspedia." :
-                    "No se pudo incorporar una imagen de Dofuspedia; se generó la tarjeta con fondo oscuro." +
+                    (background && boss ? "Se utilizaron el fondo y la imagen del jefe de Dofuspedia." :
+                    background ? "Se utilizó el fondo de Dofuspedia." :
+                    boss ? "Se utilizó la imagen del jefe de Dofuspedia." :
+                    "No se pudieron incorporar imágenes de Dofuspedia; se generó la tarjeta con fondo oscuro." +
                     (imageWarning ? "\nMotivo: " + imageWarning : "")));
             }
         } catch (error) {
