@@ -301,6 +301,66 @@
         return "⚔️ " + event.name + "\n📅 " + date + "\n🕐 " + time + " (tu hora)\n\nCalendario del gremio: " + link;
     }
 
+    function showPreview(blob, filename, shareText, eventName, imageSummary) {
+        const oldModal = document.querySelector(".share-preview-modal");
+        if (oldModal) oldModal.remove();
+
+        const imageUrl = URL.createObjectURL(blob);
+        const file = new File([blob], filename, { type: "image/png" });
+        const modal = document.createElement("div");
+        modal.className = "share-preview-modal";
+        modal.innerHTML = `
+            <div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir">
+                <button type="button" class="share-preview-close" aria-label="Cerrar">×</button>
+                <h2>Vista previa</h2>
+                <p class="share-preview-subtitle">${escapeHTML(eventName)}</p>
+                <img class="share-preview-image" src="${imageUrl}" alt="Tarjeta del evento">
+                <p class="share-preview-note">${escapeHTML(imageSummary)}</p>
+                <div class="share-preview-actions">
+                    <button type="button" class="share-preview-download">⬇️ Descargar PNG</button>
+                    <button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button>
+                    <button type="button" class="share-preview-native">↗ Compartir…</button>
+                </div>
+            </div>`;
+
+        const close = () => {
+            modal.remove();
+            URL.revokeObjectURL(imageUrl);
+        };
+        modal.querySelector(".share-preview-close").addEventListener("click", close);
+        modal.addEventListener("click", e => { if (e.target === modal) close(); });
+
+        modal.querySelector(".share-preview-download").addEventListener("click", () => {
+            downloadBlob(blob, filename);
+        });
+
+        modal.querySelector(".share-preview-whatsapp").addEventListener("click", () => {
+            downloadBlob(blob, filename);
+            const url = "https://web.whatsapp.com/send?text=" + encodeURIComponent(shareText);
+            window.open(url, "_blank");
+        });
+
+        const nativeButton = modal.querySelector(".share-preview-native");
+        if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })) {
+            nativeButton.hidden = true;
+        } else {
+            nativeButton.addEventListener("click", async () => {
+                try {
+                    // La llamada ocurre directamente dentro del clic del usuario.
+                    const promise = navigator.share({ files: [file], title: eventName, text: shareText });
+                    await promise;
+                } catch (error) {
+                    if (error.name !== "AbortError") {
+                        console.error("Error al compartir:", error);
+                        alert("No se pudo compartir: " + error.message);
+                    }
+                }
+            });
+        }
+
+        document.body.appendChild(modal);
+    }
+
     async function shareEvent(event, button) {
         const originalText = button.textContent;
         button.disabled = true;
@@ -348,31 +408,22 @@
             });
 
             const filename = ("evento-" + cleanText(event.name))
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
                 .replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "")
                 .toLowerCase() + ".png";
 
-            const file = new File([blob], filename, { type: "image/png" });
-            const shareText = makeShareText(event);
+            const imageSummary = background && boss
+                ? "Se utilizaron el fondo y la imagen del jefe de Dofuspedia."
+                : background
+                    ? "Se utilizó el fondo de Dofuspedia."
+                    : boss
+                        ? "Se utilizó la imagen del jefe de Dofuspedia."
+                        : "La tarjeta se generó sin imágenes de Dofuspedia." + (imageWarning ? " " + imageWarning : "");
 
-            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-                await navigator.share({ files: [file], title: event.name, text: shareText });
-            } else {
-                downloadBlob(blob, filename);
-                const whatsappUrl = "https://wa.me/?text=" + encodeURIComponent(shareText);
-                window.open(whatsappUrl, "_blank", "noopener");
-                alert("La imagen se ha descargado. Adjunta el PNG en el grupo de WhatsApp.\n\n" +
-                    (background && boss ? "Se utilizaron el fondo y la imagen del jefe de Dofuspedia." :
-                    background ? "Se utilizó el fondo de Dofuspedia." :
-                    boss ? "Se utilizó la imagen del jefe de Dofuspedia." :
-                    "No se pudieron incorporar imágenes de Dofuspedia; se generó la tarjeta con fondo oscuro." +
-                    (imageWarning ? "\nMotivo: " + imageWarning : "")));
-            }
+            showPreview(blob, filename, makeShareText(event), event.name, imageSummary);
         } catch (error) {
-            if (error.name !== "AbortError") {
-                console.error("Error compartiendo evento:", error);
-                alert("No se pudo preparar la imagen: " + error.message);
-            }
+            console.error("Error preparando evento:", error);
+            alert("No se pudo preparar la imagen: " + error.message);
         } finally {
             button.disabled = false;
             button.textContent = originalText;
