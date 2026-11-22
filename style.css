@@ -111,3 +111,21 @@ button:not(:disabled):active { transform:scale(.97); }
 .share-event-button{background:#34302a;color:#e8d6ad;border:1px solid #806b45;border-radius:var(--radius-small);padding:9px 14px;cursor:pointer;font-weight:bold;font-size:12px}
 .share-event-button:hover{background:#4a3e2b;border-color:#c5b285;color:#fff}
 .share-event-button:disabled{opacity:.65;cursor:wait}
+
+
+/* Vista previa de la tarjeta antes de compartir */
+.share-preview-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(4px)}
+.share-preview-panel{position:relative;width:min(820px,100%);max-height:94vh;overflow:auto;background:#202020;border:1px solid #65563b;border-top:3px solid #c5b285;border-radius:12px;padding:22px;box-shadow:0 20px 70px rgba(0,0,0,.65)}
+.share-preview-panel h2{margin:0 40px 5px 0;color:#f2e6ca;font-size:21px}
+.share-preview-subtitle{margin:0 0 15px;color:#aaa;font-size:13px}
+.share-preview-close{position:absolute;right:14px;top:8px;border:0;background:none;color:#aaa;font-size:30px;cursor:pointer}
+.share-preview-close:hover{color:#fff}
+.share-preview-image{display:block;width:100%;height:auto;max-height:62vh;object-fit:contain;background:#151515;border:1px solid #48413a;border-radius:7px}
+.share-preview-note{margin:12px 0;color:#aaa;font-size:12px}
+.share-preview-actions{display:flex;gap:9px;flex-wrap:wrap}
+.share-preview-actions button{border:1px solid #806b45;border-radius:6px;background:#34302a;color:#f0dfbb;padding:10px 14px;font-weight:bold;font-size:13px;cursor:pointer}
+.share-preview-actions button:hover{background:#4a3e2b;border-color:#c5b285}
+.share-preview-actions .share-preview-whatsapp{background:#176b3a;border-color:#25834c;color:#fff}
+.share-preview-actions .share-preview-whatsapp:hover{background:#21834a}
+.share-preview-actions button[hidden]{display:none}
+@media(max-width:600px){.share-preview-modal{padding:8px}.share-preview-panel{padding:16px}.share-preview-image{max-height:55vh}.share-preview-actions{display:grid;grid-template-columns:1fr}.share-preview-actions button{width:100%}}
