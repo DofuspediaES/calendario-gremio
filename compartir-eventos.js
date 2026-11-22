@@ -114,77 +114,84 @@
         return lines;
     }
 
+    function stripEventAnnotations(value) {
+        let text=cleanText(value);
+        // Quita aclaraciones entre paréntesis/corchetes, incluso si hay más de una.
+        let previous;
+        do {
+            previous=text;
+            text=text.replace(/\([^()]*\)|\[[^\[\]]*\]/g," ");
+        } while(text!==previous);
+        return text.replace(/\s+/g," ").trim();
+    }
+    function cleanBossTerm(value) {
+        return stripEventAnnotations(value)
+            .replace(/^(expedicion|mazmorra|dungeon|raid|grupo|salida|actividad|evento)\s+(?:de|del|para)\s+/i,"")
+            .replace(/\b(?:con|sin|sans|com)\s+(?:idolo|idol|idole)s?\b/gi," ")
+            .replace(/\b(?:duo|trio|score|logro|exito|exitos|hardcore|estatua|especial|primer[oa]?)\b/gi," ")
+            .replace(/\s+/g," ").trim();
+    }
     function getImagePlan(event) {
-        const original = cleanText(event.name);
-        // Elimina aclaraciones entre paréntesis ANTES de normalizar, porque la normalización convierte los paréntesis en espacios.
-        const withoutNotes = original.replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
-        const normalized = normalizeTitle(withoutNotes);
-        const core = normalized.replace(/^(expedicion|mazmorra|dungeon|raid|grupo|salida)\s+(de|del|para)\s+/i,"").trim();
-        if (normalized.includes("reina amirukam")) return { background:["Recuerdo de Imagiro"], bosses:["Reina Amirukam"] };
-        if (normalized.includes("sombra")) return { background:["Piramide de Sombra"], bosses:["Sombra"] };
-        if (normalized.includes("vortex") && normalized.includes("kontatras")) return { background:["Ojo de Vórtex","Ojo de Vortex"], bosses:["Vórtex","Vortex","Conde Kontatrás","Conde Kontatras"] };
-        if (normalized.includes("minotot")) return { background:["Laberinto del Minotauroro","Mazmorra del Minotot","Minotot"], bosses:["Minotot"] };
-        const terms = core.split(/\s+(?:y|&|\+)\s+/i).map(cleanText).filter(Boolean);
-        const bosses = terms.length>1 ? terms : [core || normalized || original];
-        return { background:[...new Set([original,withoutNotes,normalized,core].filter(Boolean))], bosses };
+        const original=cleanText(event.name);
+        const withoutNotes=stripEventAnnotations(original);
+        const normalized=normalizeTitle(withoutNotes);
+        const core=cleanBossTerm(withoutNotes);
+        if(normalized.includes("reina amirukam"))return {background:["Recuerdo de Imagiro"],bosses:["Reina Amirukam"]};
+        if(normalized.includes("sombra"))return {background:["Piramide de Sombra"],bosses:["Sombra"]};
+        if(normalized.includes("vortex")&&normalized.includes("kontatras"))return {background:["Ojo de Vórtex","Ojo de Vortex"],bosses:["Vórtex","Vortex","Conde Kontatrás","Conde Kontatras"]};
+        if(normalized.includes("minotot"))return {background:["Laberinto del Minotauroro","Mazmorra del Minotot","Minotot"],bosses:["Minotot"]};
+        const terms=core.split(/\s+(?:y|&|\+)\s+/i).map(cleanBossTerm).filter(Boolean);
+        return {background:[...new Set([original,withoutNotes,normalized,core].filter(Boolean))],bosses:terms.length>1?terms:[core||normalized||original]};
     }
     function getSearchVariants(term) {
-        const clean = cleanText(term);
-        const noNotes = clean.replace(/\([^)]*\)|\[[^\]]*\]/g," ").replace(/\s+/g," ").trim();
-        const normalized = normalizeTitle(noNotes);
-        const core = normalized
-            .replace(/\b(con|com|sin|sans)\s+(idolo|idol|idole)s?\b/g," ")
-            .replace(/\b(duo|trio|score|logro|exito|exitos|hardcore)\b/g," ")
-            .replace(/\s+/g," ").trim();
-        const bases = [...new Set([clean,noNotes,normalized,core].filter(Boolean))];
-        const accentMap = {a:["á"],e:["é"],i:["í"],o:["ó"],u:["ú","ü"]};
-        const variants = new Set(bases);
-        for (const base of [noNotes,core]) {
-            let generated = [normalizeTitle(base)];
-            for (let i=0;i<base.length && variants.size<28;i++) {
-                const letter=base[i].toLowerCase(), accents=accentMap[letter];
-                if (!accents) continue;
-                const additions=[];
-                for (const current of generated) {
-                    const plain=current[i];
-                    if (plain===letter) for (const accent of accents) additions.push(current.slice(0,i)+accent+current.slice(i+1));
-                }
-                generated.push(...additions);
-                generated=generated.slice(0,20);
+        const clean=cleanText(term);
+        const noNotes=cleanBossTerm(clean);
+        const normalized=normalizeTitle(noNotes);
+        const accentMap={a:["á"],e:["é"],i:["í"],o:["ó"],u:["ú","ü"]};
+        const variants=new Set([clean,stripEventAnnotations(clean),noNotes,normalized]);
+        // Genera variantes ortográficas con y sin tildes para cada vocal, no solo para ejemplos conocidos.
+        let generated=[normalized];
+        for(let i=0;i<normalized.length;i++){
+            const accents=accentMap[normalized[i]];
+            if(!accents)continue;
+            const additions=[];
+            for(const current of generated){
+                for(const accent of accents)additions.push(current.slice(0,i)+accent+current.slice(i+1));
             }
-            generated.forEach(value=>variants.add(value));
+            generated.push(...additions);
+            generated=generated.slice(0,24);
         }
-        return [...variants].filter(Boolean).slice(0,28);
+        generated.forEach(value=>variants.add(value));
+        return [...variants].filter(Boolean).slice(0,24);
     }
     async function searchPages(term) {
-        const variants = getSearchVariants(term).slice(0, 18);
-        const searches = await Promise.all(variants.flatMap(query => {
-            const phrase = '"' + query.replace(/"/g, "") + '"';
-            return [phrase, query].map(async search => {
-                const params = new URLSearchParams({
-                    action:"query",list:"search",srsearch:search,srnamespace:"6",
-                    srlimit:"50",format:"json",origin:"*"
-                });
-                const response = await fetch(API+"?"+params.toString());
-                if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
-                const data = await response.json();
+        const variants=getSearchVariants(term).slice(0,12);
+        const tasks=variants.flatMap(query=>{
+            const phrase='"'+query.replace(/"/g,"")+'"';
+            return [phrase,query].map(async search=>{
+                const params=new URLSearchParams({action:"query",list:"search",srsearch:search,srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
+                const response=await fetch(API+"?"+params.toString());
+                if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
+                const data=await response.json();
                 return (data.query?.search||[]).map(item=>({pageid:item.pageid,title:item.title}));
             });
-        }));
-        const matches = new Map();
-        searches.flat().forEach(page=>matches.set(page.pageid,page));
-        const ids = [...matches.keys()];
-        if (!ids.length) return [];
-        const pages = [];
-        for (let i=0;i<ids.length;i+=50) {
-            const params = new URLSearchParams({
-                action:"query",pageids:ids.slice(i,i+50).join("|"),
-                prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",
-                format:"json",origin:"*"
-            });
-            const response = await fetch(API+"?"+params.toString());
-            if (!response.ok) throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+response.status+").");
-            const data = await response.json();
+        });
+        // Consulta también los títulos exactos: el buscador interno puede no devolver un archivo aunque exista.
+        const exactParams=new URLSearchParams({action:"query",titles:variants.map(value=>"File:"+value).join("|"),prop:"info",format:"json",origin:"*"});
+        const exactResponse=await fetch(API+"?"+exactParams.toString());
+        if(!exactResponse.ok)throw new Error("No se pudieron consultar los nombres exactos de archivos.");
+        const exactData=await exactResponse.json();
+        const exactPages=Object.values(exactData.query?.pages||{}).filter(page=>page.pageid);
+        const matches=new Map();
+        [...(await Promise.all(tasks)).flat(),...exactPages].forEach(page=>matches.set(page.pageid,page));
+        const ids=[...matches.keys()];
+        if(!ids.length)return [];
+        const pages=[];
+        for(let i=0;i<ids.length;i+=50){
+            const params=new URLSearchParams({action:"query",pageids:ids.slice(i,i+50).join("|"),prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
+            const response=await fetch(API+"?"+params.toString());
+            if(!response.ok)throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+response.status+").");
+            const data=await response.json();
             pages.push(...Object.values(data.query?.pages||{}));
         }
         return pages;
@@ -222,10 +229,10 @@
                 return title.includes("piramide") && title.includes("sombra") && (item.page.imageinfo?.[0]?.thumbwidth||item.page.imageinfo?.[0]?.width||0)>=500;
             }
             if(role==="boss"){
-                const words=normalizeTitle(terms[0]).split(" ").filter(word=>word.length>2);
-                const titleWords=title.split(" ");
-                const allowedExtraWords=new Set(["dofus","boss","monstruo","monster","190","200"]);
-                // Evita confundir al jefe con objetos/libros cuyo título solo menciona su nombre (ej. "Libro rojo de Sombra").
+                const words=normalizeTitle(cleanBossTerm(terms[0])).split(" ").filter(word=>word.length>2);
+                const titleWords=title.split(" ").filter(Boolean);
+                const allowedExtraWords=new Set(["dofus","boss","monstruo","monster","jefe","creature","creatura","png","jpg","jpeg","webp","gif","web","hd","190","200","illustration","artwork","official"]);
+                // Exige el nombre completo, pero tolera sufijos habituales de archivos y versiones del juego.
                 return words.length>0 &&
                     words.every(word=>titleWords.includes(word)) &&
                     titleWords.every(word=>words.includes(word)||allowedExtraWords.has(word));
