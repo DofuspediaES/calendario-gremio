@@ -562,6 +562,7 @@
             if (!event) return;
             const state = previewStates.get(String(event.id));
             if (state) {
+                card.querySelector(".event-image-generate")?.remove();
                 const existing = card.querySelector(".event-image-preview");
                 if (!existing) renderInlinePreview(card, event, state);
                 else if (state.event !== event) {
