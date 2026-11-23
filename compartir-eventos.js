@@ -218,8 +218,27 @@
         }
         return score;
     }
+    async function searchBackgroundPages(term) {
+        const params=new URLSearchParams({action:"query",list:"search",srsearch:'"'+cleanText(term).replace(/"/g,"")+'"',srnamespace:"6",srlimit:"30",format:"json",origin:"*"});
+        const response=await fetch(API+"?"+params.toString());
+        if(!response.ok)throw new Error("No se pudo buscar el fondo en Dofuspedia (HTTP "+response.status+").");
+        const data=await response.json();
+        let ids=(data.query?.search||[]).map(page=>page.pageid).filter(Boolean);
+        if(!ids.length){
+            const titles=[".png",".jpg",".jpeg",".webp",".gif"].map(ext=>"File:"+cleanText(term)+ext);
+            const exactParams=new URLSearchParams({action:"query",titles:titles.join("|"),prop:"info",format:"json",origin:"*"});
+            const exactResponse=await fetch(API+"?"+exactParams.toString());
+            if(!exactResponse.ok)throw new Error("No se pudieron consultar los nombres del fondo.");
+            ids=Object.values((await exactResponse.json()).query?.pages||{}).filter(page=>page.pageid).map(page=>page.pageid);
+        }
+        if(!ids.length)return [];
+        const imageParams=new URLSearchParams({action:"query",pageids:ids.join("|"),prop:"imageinfo",iiprop:"url|size",iiurlwidth:"1200",format:"json",origin:"*"});
+        const imageResponse=await fetch(API+"?"+imageParams.toString());
+        if(!imageResponse.ok)throw new Error("No se pudo recuperar el fondo de Dofuspedia.");
+        return Object.values((await imageResponse.json()).query?.pages||{});
+    }
     async function findBestImage(terms,role) {
-        const searches=await Promise.all(terms.filter(Boolean).map(term=>searchPages(term)));
+        const searches=await Promise.all(terms.filter(Boolean).map(term=>role==="background"?searchBackgroundPages(term):searchPages(term)));
         const all=[],seen=new Set();
         searches.flat().forEach(page=>{if(!seen.has(page.pageid)){seen.add(page.pageid);all.push(page);}});
         const ranked=all.map(page=>({page,score:Math.max(...terms.map(term=>scoreImage(page,term,role)))})).sort((a,b)=>b.score-a.score);
@@ -253,7 +272,10 @@
             findBestImage(plan.background,"background"),
             Promise.all(plan.bosses.map(term=>findBestImage([term],"boss")))
         ]);
-        return {background,bosses:bossResults.filter(Boolean)};
+        const bosses=bossResults.filter(Boolean);
+        const bossTitles=new Set(bosses.map(item=>normalizeTitle(item.title)));
+        const safeBackground=background&&!bossTitles.has(normalizeTitle(background.title))?background:null;
+        return {background:safeBackground,bosses};
     }
 
     function loadCanvasImage(url) {
@@ -282,7 +304,7 @@
         ctx.fillStyle="#24272b";ctx.fillRect(0,0,WIDTH,HEIGHT);
         if(background)drawCover(ctx,background,0,0,WIDTH,HEIGHT);
         const overlay=ctx.createLinearGradient(0,0,WIDTH,HEIGHT);
-        overlay.addColorStop(0,"rgba(25,27,30,.96)");overlay.addColorStop(.58,"rgba(25,27,30,.86)");overlay.addColorStop(1,"rgba(25,27,30,.68)");
+        overlay.addColorStop(0,"rgba(25,27,30,.76)");overlay.addColorStop(.58,"rgba(25,27,30,.56)");overlay.addColorStop(1,"rgba(25,27,30,.40)");
         ctx.fillStyle=overlay;ctx.fillRect(0,0,WIDTH,HEIGHT);
         if(bosses?.length){
             const maxHeight=250,count=bosses.length,slotWidth=count>1?Math.min(245,(260-(count-1)*4)/count):245;
@@ -311,19 +333,19 @@
         const groups=groupTimes(event);
         const flagImages=await Promise.all([...new Set(groups.flatMap(group=>group.countries.map(item=>item.code)))].map(async code=>[code,await loadFlag(code)]));
         const flags=new Map(flagImages);
-        let gx=62,gy=371;
-        groups.forEach(group=>{
+        const columns=4,cellWidth=680/columns;
+        groups.forEach((group,index)=>{
+            const column=index%columns,row=Math.floor(index/columns);
             const groupWidth=group.countries.length*18+43;
-            if(gx+groupWidth>742){gx=62;gy+=23;}
+            const gx=62+column*cellWidth+(cellWidth-groupWidth)/2,gy=365+row*23;
             let cx=gx;
             group.countries.forEach(country=>{
                 const flag=flags.get(country.code);
-                if(flag)ctx.drawImage(flag,cx,gy-12,15,11);
+                if(flag)ctx.drawImage(flag,cx,gy-11,15,11);
                 cx+=18;
             });
             ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
             ctx.fillText(group.time,cx+2,gy);
-            gx+=groupWidth+12;
         });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
         ctx.restore();
