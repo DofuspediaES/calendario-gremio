@@ -386,127 +386,217 @@
         setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
-    function showPreview(canvas,filename,eventName,imageSummary,selected) {
-        const old=document.querySelector(".share-preview-modal");if(old)old.remove();
-        const modal=document.createElement("div");modal.className="share-preview-modal";
-        modal.innerHTML='<div class="share-preview-panel" role="dialog" aria-modal="true" aria-label="Vista previa para compartir"><button type="button" class="share-preview-close" aria-label="Cerrar">×</button><h2>Vista previa</h2><p class="share-preview-subtitle"></p><img class="share-preview-image" alt="Tarjeta del evento"><p class="share-preview-note"></p><details class="share-image-search"><summary>Buscar imágenes en Dofuspedia</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca una imagen y elige si quieres usarla como fondo o como imagen de jefe. Puedes añadir más de un jefe.</p><div class="share-image-results"></div></details><div class="share-preview-actions"><button type="button" class="share-preview-download">⬇️ Descargar PNG</button><button type="button" class="share-preview-whatsapp">🟢 WhatsApp Web</button><button type="button" class="share-preview-native">↗ Compartir imagen</button></div></div>';
-        const image=modal.querySelector(".share-preview-image"),note=modal.querySelector(".share-preview-note"),query=modal.querySelector(".share-image-query"),results=modal.querySelector(".share-image-results"),searchButton=modal.querySelector(".share-image-search-button");
-        modal.querySelector(".share-preview-subtitle").textContent=eventName;
-        let imageUrl=null,currentBlob=null,currentCanvas=canvas;
-        const updateNative=()=>{native.hidden=!currentBlob;};
-        const update=async()=>{
-            currentBlob=await new Promise((resolve,reject)=>currentCanvas.toBlob(v=>v?resolve(v):reject(new Error("No se pudo generar el PNG.")),"image/png"));
-            if(imageUrl)URL.revokeObjectURL(imageUrl);imageUrl=URL.createObjectURL(currentBlob);image.src=imageUrl;updateNative();
+    const previewStates = new Map();
+
+    function getFilename(event) {
+        return ("evento-" + cleanText(event.name)).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "").toLowerCase() + ".png";
+    }
+
+    async function canvasBlob(canvas) {
+        return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("No se pudo generar el PNG.")), "image/png"));
+    }
+
+    async function renderInlinePreview(card, event, state) {
+        const old = card.querySelector(".event-image-preview");
+        if (old) old.remove();
+        const panel = document.createElement("section");
+        panel.className = "event-image-preview";
+        panel.innerHTML = '<div class="event-image-preview-header"><strong>🖼️ Vista previa de la imagen</strong><span class="event-image-preview-status">Preparando…</span></div><div class="event-image-preview-layout"><div class="event-image-preview-art"><canvas class="event-image-preview-canvas" width="800" height="450"></canvas><div class="event-image-preview-actions"><button type="button" class="event-image-copy">📋 Copiar imagen</button><button type="button" class="event-image-download">⬇️ Descargar PNG</button></div></div><div class="event-image-preview-editor"><details class="share-image-search" open><summary>Editar imagen</summary><div class="share-image-search-form"><input type="search" class="share-image-query" placeholder="Ej. Recuerdo de Imagiro, Reina Amirukam…"><button type="button" class="share-image-search-button">Buscar</button></div><p class="share-image-help">Busca imágenes en Dofuspedia para cambiar el fondo o añadir jefes. También puedes quitar los jefes añadidos.</p><div class="event-image-current-bosses"></div><div class="share-image-results"></div></details></div></div>';
+        const canvas = panel.querySelector("canvas");
+        const ctx = canvas.getContext("2d");
+        const status = panel.querySelector(".event-image-preview-status");
+        const query = panel.querySelector(".share-image-query");
+        const results = panel.querySelector(".share-image-results");
+        const searchButton = panel.querySelector(".share-image-search-button");
+        const bossList = panel.querySelector(".event-image-current-bosses");
+        const copyButton = panel.querySelector(".event-image-copy");
+        const downloadButton = panel.querySelector(".event-image-download");
+        card.appendChild(panel);
+
+        const redraw = async () => {
+            state.event = event;
+            state.participants = typeof getEventParticipants === "function" ? getEventParticipants(event.id) : [];
+            const rendered = await drawCard(state.event, state.participants, state.background, state.bosses);
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            ctx.drawImage(rendered, 0, 0);
+            status.textContent = "Imagen generada en este navegador";
+            renderBossList();
         };
-        const redraw=async()=>{
-            currentCanvas=await drawCard(window.__shareEventData.event,window.__shareEventData.participants,selected.background,selected.bosses);
-            await update();
+
+        const renderBossList = () => {
+            bossList.innerHTML = "";
+            if (!state.bosses.length) {
+                bossList.textContent = "No hay jefes añadidos.";
+                return;
+            }
+            const heading = document.createElement("div");
+            heading.className = "event-image-boss-heading";
+            heading.textContent = "Jefes incluidos";
+            bossList.appendChild(heading);
+            state.bosses.forEach((boss, index) => {
+                const row = document.createElement("div");
+                row.className = "event-image-boss-item";
+                const label = document.createElement("span");
+                label.textContent = "Jefe " + (index + 1);
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.textContent = "✕ Eliminar";
+                remove.addEventListener("click", async () => {
+                    state.bosses.splice(index, 1);
+                    try { await redraw(); } catch (error) { status.textContent = error.message; }
+                });
+                row.append(label, remove);
+                bossList.appendChild(row);
+            });
         };
-        const close=()=>{modal.remove();if(imageUrl)URL.revokeObjectURL(imageUrl);};
-        modal.querySelector(".share-preview-close").addEventListener("click",close);
-        modal.addEventListener("click",e=>{if(e.target===modal)close();});
-        modal.querySelector(".share-preview-download").addEventListener("click",()=>downloadBlob(currentBlob,filename));
-        modal.querySelector(".share-preview-whatsapp").addEventListener("click",()=>{
-            const whatsappWindow=window.open("https://web.whatsapp.com/","_blank");
-            downloadBlob(currentBlob,filename);
-            if(!whatsappWindow)alert("La imagen se descargó. Permite las ventanas emergentes para abrir WhatsApp Web.");
-        });
-        const native=modal.querySelector(".share-preview-native");
-        native.addEventListener("click",async()=>{
-            try{
-                const file=new File([currentBlob],filename,{type:"image/png"});
-                if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-                    await navigator.share({files:[file],title:eventName});
-                }else{
-                    downloadBlob(currentBlob,filename);
-                    alert("Este navegador no permite compartir archivos directamente. La imagen se descargó; adjúntala en WhatsApp o en la aplicación que prefieras.");
+
+        const doSearch = async () => {
+            const term = cleanText(query.value);
+            if (!term) return;
+            searchButton.disabled = true;
+            searchButton.textContent = "Buscando…";
+            results.innerHTML = "";
+            try {
+                const pages = await searchPages(term);
+                pages.sort((a, b) => scoreImage(b, term, "boss") - scoreImage(a, term, "boss"));
+                if (!pages.length) {
+                    results.textContent = "No se encontraron imágenes. Prueba con otro término.";
+                    return;
                 }
-            }catch(error){
-                if(error.name!=="AbortError"){
-                    downloadBlob(currentBlob,filename);
-                    alert("No se pudo abrir el menú para compartir. La imagen se descargó para que puedas adjuntarla manualmente.");
-                }
+                pages.slice(0, 18).forEach(page => {
+                    const info = page.imageinfo?.[0], url = info?.thumburl || info?.url;
+                    if (!url) return;
+                    const item = document.createElement("div");
+                    item.className = "share-image-result";
+                    const fallbackUrl = info.url, expectedWidth = info.thumbwidth || info.width || 0, expectedHeight = info.thumbheight || info.height || 0;
+                    const img = document.createElement("img");
+                    img.src = url; img.alt = page.title; img.loading = "lazy";
+                    img.addEventListener("error", () => { if (fallbackUrl && img.dataset.original !== "true") { img.dataset.original = "true"; img.src = fallbackUrl; } });
+                    img.addEventListener("load", () => { if (fallbackUrl && img.dataset.original !== "true" && ((expectedWidth && img.naturalWidth !== expectedWidth) || (expectedHeight && img.naturalHeight !== expectedHeight))) { img.dataset.original = "true"; img.src = fallbackUrl; } });
+                    const title = document.createElement("span");
+                    title.textContent = page.title.replace(/^(File|Archivo):/i, "");
+                    const bg = document.createElement("button");
+                    bg.type = "button"; bg.textContent = "Usar de fondo";
+                    bg.addEventListener("click", async () => {
+                        bg.disabled = true;
+                        try {
+                            state.background = await loadCanvasImage(url, fallbackUrl, expectedWidth, expectedHeight);
+                            await redraw();
+                            status.textContent = "Fondo actualizado";
+                        } catch (error) { alert("No se pudo usar esta imagen: " + error.message); }
+                        bg.disabled = false;
+                    });
+                    const boss = document.createElement("button");
+                    boss.type = "button"; boss.textContent = "Añadir como jefe";
+                    boss.addEventListener("click", async () => {
+                        boss.disabled = true;
+                        try {
+                            state.bosses.push(await loadCanvasImage(url, fallbackUrl, expectedWidth, expectedHeight));
+                            await redraw();
+                            status.textContent = "Jefe añadido";
+                        } catch (error) { alert("No se pudo usar esta imagen: " + error.message); }
+                        boss.disabled = false;
+                    });
+                    item.append(img, title, bg, boss);
+                    results.appendChild(item);
+                });
+            } catch (error) { results.textContent = "No se pudo buscar en Dofuspedia: " + error.message; }
+            finally { searchButton.disabled = false; searchButton.textContent = "Buscar"; }
+        };
+
+        searchButton.addEventListener("click", doSearch);
+        query.addEventListener("keydown", event => { if (event.key === "Enter") doSearch(); });
+        copyButton.addEventListener("click", async () => {
+            try {
+                const blob = await canvasBlob(canvas);
+                if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") throw new Error("Este navegador no permite copiar imágenes. Usa Descargar PNG.");
+                await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+                status.textContent = "Imagen copiada. Ya puedes pegarla.";
+            } catch (error) {
+                status.textContent = error.message || "No se pudo copiar la imagen.";
             }
         });
-        const doSearch=async()=>{
-            const term=cleanText(query.value);if(!term)return;
-            searchButton.disabled=true;searchButton.textContent="Buscando…";results.innerHTML="";
-            try{
-                const pages=await searchPages(term);
-                pages.sort((a,b)=>scoreImage(b,term,"boss")-scoreImage(a,term,"boss"));
-                if(!pages.length){results.textContent="No se encontraron imágenes. Prueba con otro término.";return;}
-                pages.slice(0,18).forEach(page=>{
-                    const info=page.imageinfo?.[0],url=info?.thumburl||info?.url;if(!url)return;
-                    const item=document.createElement("div");item.className="share-image-result";
-                    const fallbackUrl=info.url,expectedWidth=info.thumbwidth||info.width||0,expectedHeight=info.thumbheight||info.height||0;
-                    const img=document.createElement("img");img.src=url;img.alt=page.title;img.loading="lazy";
-                    img.addEventListener("error",()=>{if(fallbackUrl&&img.dataset.original!=="true"){img.dataset.original="true";img.src=fallbackUrl;}});
-                    img.addEventListener("load",()=>{if(fallbackUrl&&img.dataset.original!=="true"&&((expectedWidth&&img.naturalWidth!==expectedWidth)||(expectedHeight&&img.naturalHeight!==expectedHeight))){img.dataset.original="true";img.src=fallbackUrl;}});
-                    const title=document.createElement("span");title.textContent=page.title.replace(/^(File|Archivo):/i,"");
-                    const bg=document.createElement("button");bg.type="button";bg.textContent="Usar de fondo";
-                    bg.addEventListener("click",async()=>{bg.disabled=true;try{selected.background=await loadCanvasImage(url,fallbackUrl,expectedWidth,expectedHeight);await redraw();note.textContent="Fondo seleccionado y añadido a la vista previa: "+title.textContent;}catch(e){alert("No se pudo usar esta imagen: "+e.message);}bg.disabled=false;});
-                    const boss=document.createElement("button");boss.type="button";boss.textContent="Añadir como jefe";
-                    boss.addEventListener("click",async()=>{boss.disabled=true;try{selected.bosses.push(await loadCanvasImage(url,fallbackUrl,expectedWidth,expectedHeight));await redraw();note.textContent="Jefe añadido y mostrado en la vista previa: "+title.textContent+" ("+selected.bosses.length+").";}catch(e){alert("No se pudo usar esta imagen: "+e.message);}boss.disabled=false;});
-                    item.append(img,title,bg,boss);results.appendChild(item);
-                });
-            }catch(error){results.textContent="No se pudo buscar en Dofuspedia: "+error.message;}
-            finally{searchButton.disabled=false;searchButton.textContent="Buscar";}
-        };
-        searchButton.addEventListener("click",doSearch);query.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});
-        document.body.appendChild(modal);note.textContent=imageSummary;update().then(updateNative).catch(e=>note.textContent=e.message);
+        downloadButton.addEventListener("click", async () => {
+            try { downloadBlob(await canvasBlob(canvas), getFilename(event)); }
+            catch (error) { status.textContent = error.message; }
+        });
+        try { await redraw(); }
+        catch (error) { status.textContent = "No se pudo generar la imagen: " + error.message; }
     }
 
-    async function shareEvent(event,button) {
-        const original=button.textContent;button.disabled=true;button.textContent="⏳ Preparando imagen…";
-        try{
-            const participants=typeof getEventParticipants==="function"?getEventParticipants(event.id):[];
-            const selected={background:null,bosses:[]};let warning="";
-            try{
-                const found=await searchDofuspediaImages(event);
-                if(found.background?.url){try{selected.background=await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height);}catch(e){console.warn("No se pudo cargar el fondo:",e);}}
-                for(const boss of found.bosses||[]){try{selected.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height));}catch(e){console.warn("No se pudo cargar jefe:",e);}}
-                if(!selected.background&&!selected.bosses.length)warning="No se encontraron imágenes compatibles para esta actividad.";
-            }catch(e){console.warn("Imágenes de Dofuspedia no disponibles:",e);warning=e.message;}
-            const canvas=await drawCard(event,participants,selected.background,selected.bosses);
-            const filename=("evento-"+cleanText(event.name)).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9-]+/g,"-").replace(/^-|-$/g,"").toLowerCase()+".png";
-            const summary=selected.background&&selected.bosses.length?"Se utilizó el fondo y "+selected.bosses.length+" imagen(es) de jefe. Puedes cambiarlos o añadir otros."
-                :selected.background?"Se utilizó el fondo de Dofuspedia. Puedes buscar y añadir jefes."
-                :selected.bosses.length?"Se utilizaron "+selected.bosses.length+" imagen(es) de jefe. Puedes buscar un fondo."
-                :"La tarjeta se generó sin imágenes. Puedes buscarlas manualmente. "+warning;
-            window.__shareEventData={event,participants};
-            showPreview(canvas,filename,event.name,summary,selected);
-        }catch(error){console.error("Error preparando evento:",error);alert("No se pudo preparar la imagen: "+error.message);}
-        finally{button.disabled=false;button.textContent=original;}
+    async function generatePreview(event, card, button) {
+        const original = button?.textContent;
+        if (button) { button.disabled = true; button.textContent = "⏳ Preparando imagen…"; }
+        try {
+            let state = previewStates.get(String(event.id));
+            if (!state) {
+                state = { event, participants: [], background: null, bosses: [] };
+                previewStates.set(String(event.id), state);
+                try {
+                    const found = await searchDofuspediaImages(event);
+                    if (found.background?.url) {
+                        try { state.background = await loadCanvasImage(found.background.url, found.background.fallbackUrl, found.background.width, found.background.height); }
+                        catch (error) { console.warn("No se pudo cargar el fondo:", error); }
+                    }
+                    for (const boss of found.bosses || []) {
+                        try { state.bosses.push(await loadCanvasImage(boss.url, boss.fallbackUrl, boss.width, boss.height)); }
+                        catch (error) { console.warn("No se pudo cargar jefe:", error); }
+                    }
+                } catch (error) { console.warn("Imágenes de Dofuspedia no disponibles:", error); }
+            }
+            await renderInlinePreview(card, event, state);
+        } catch (error) {
+            console.error("Error preparando vista previa:", error);
+            alert("No se pudo preparar la imagen: " + error.message);
+        } finally {
+            if (button) { button.disabled = false; button.textContent = original || "🖼️ Generar imagen"; }
+        }
     }
 
-    function addShareButtons() {
+    function addPreviewButtons() {
         const list = document.getElementById("eventsList");
         if (!list || typeof events === "undefined" || !Array.isArray(events)) return;
-
         list.querySelectorAll(".event-card").forEach(card => {
-            if (card.querySelector(".share-event-button")) return;
-            const eventId = String(card.dataset.eventId);
             const event = events.find(item => String(item.id) === String(card.dataset.eventId));
             if (!event) return;
-
+            const state = previewStates.get(String(event.id));
+            if (state) {
+                const existing = card.querySelector(".event-image-preview");
+                if (!existing) renderInlinePreview(card, event, state);
+                else if (state.event !== event) {
+                    state.event = event;
+                    renderInlinePreview(card, event, state);
+                }
+                return;
+            }
+            if (card.querySelector(".event-image-generate")) return;
             const actions = card.querySelector(".event-actions");
             if (!actions) return;
-
             const button = document.createElement("button");
             button.type = "button";
-            button.className = "share-event-button";
-            button.textContent = "🖼️ Compartir";
-            button.addEventListener("click", () => shareEvent(event, button));
+            button.className = "share-event-button event-image-generate";
+            button.textContent = "🖼️ Generar imagen";
+            button.addEventListener("click", () => generatePreview(event, card, button));
             actions.appendChild(button);
         });
     }
 
-    const list = document.getElementById("eventsList");
-    if (list) {
-        new MutationObserver(addShareButtons).observe(list, { childList: true, subtree: true });
+    async function generateCreatedEvent(eventId) {
+        const event = typeof events !== "undefined" && Array.isArray(events)
+            ? events.find(item => String(item.id) === String(eventId)) : null;
+        if (!event) return;
+        const card = document.querySelector('.event-card[data-event-id="' + CSS.escape(String(eventId)) + '"]');
+        if (!card) return;
+        const button = card.querySelector(".event-image-generate");
+        await generatePreview(event, card, button);
     }
-    document.addEventListener("DOMContentLoaded", addShareButtons);
-    window.addEventListener("load", () => setTimeout(addShareButtons, 500));
-    setTimeout(addShareButtons, 1200);
-    console.log("🖼️ Compartir eventos preparado.");
+
+    const list = document.getElementById("eventsList");
+    if (list) new MutationObserver(addPreviewButtons).observe(list, { childList: true, subtree: true });
+    document.addEventListener("DOMContentLoaded", addPreviewButtons);
+    window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
+    window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
+    setTimeout(addPreviewButtons, 1200);
+    console.log("🖼️ Vista previa de imágenes integrada en las actividades.");
 })();
