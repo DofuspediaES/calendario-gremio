@@ -398,6 +398,7 @@
     }
 
     async function renderInlinePreview(card, event, state) {
+        state.event = event;
         const old = card.querySelector(".event-image-preview");
         if (old) old.remove();
         const panel = document.createElement("section");
@@ -652,10 +653,11 @@
         const event = typeof events !== "undefined" && Array.isArray(events)
             ? events.find(item => String(item.id) === String(eventId)) : null;
         if (!event) return;
+        const state = previewStates.get(String(eventId));
+        if (!state) return;
         const card = document.querySelector('.event-card[data-event-id="' + CSS.escape(String(eventId)) + '"]');
         if (!card) return;
-        const button = card.querySelector(".event-image-generate");
-        await generatePreview(event, card, button);
+        await renderInlinePreview(card, event, state);
     }
 
     const list = document.getElementById("eventsList");
