@@ -163,3 +163,24 @@ button:not(:disabled):active { transform:scale(.97); }
 .share-image-search-button:hover,.share-image-result button:hover{background:#4b5158}
 .share-image-result{background:#292d32;border-color:#4c535a}
 .share-image-result span{color:#f0f1f2}
+
+
+/* Vista previa de imagen integrada en la ficha de actividad */
+.event-image-preview{margin-top:16px;padding:14px;background:#1d2024;border:1px solid #4c535a;border-radius:8px;border-left:3px solid #f73d00}
+.event-image-preview-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;color:#f1f1f1;font-size:13px}
+.event-image-preview-status{color:#c1c6ca;font-size:11px;font-weight:normal}
+.event-image-preview-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(220px,1fr);gap:14px;align-items:start}
+.event-image-preview-art{min-width:0}
+.event-image-preview-canvas{display:block;width:100%;height:auto;border:1px solid #555b61;border-radius:6px;background:#17191c}
+.event-image-preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.event-image-preview-actions button,.event-image-boss-item button{border:1px solid #f73d00;border-radius:5px;background:#383d43;color:#fff;padding:8px 11px;cursor:pointer;font-size:12px;font-weight:bold}
+.event-image-preview-actions button:hover,.event-image-boss-item button:hover{background:#4b5158}
+.event-image-preview-editor{min-width:0}
+.event-image-preview-editor .share-image-search{margin:0;padding:10px}
+.event-image-preview-editor .share-image-search[open]{display:block}
+.event-image-boss-heading{margin:12px 0 6px;color:#ff6a36;font-size:12px;font-weight:bold}
+.event-image-boss-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #42484e;color:#ddd;font-size:12px}
+.event-image-boss-item button{padding:5px 8px;font-size:10px;border-color:#a94a42}
+.event-image-preview .share-image-results{grid-template-columns:1fr;max-height:260px}
+@media(max-width:700px){.event-image-preview-layout{grid-template-columns:1fr}.event-image-preview-header{align-items:flex-start;flex-direction:column}.event-image-preview-actions{display:grid;grid-template-columns:1fr 1fr}.event-image-preview-actions button{width:100%}}
+@media(max-width:420px){.event-image-preview-actions{grid-template-columns:1fr}}
