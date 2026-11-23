@@ -264,7 +264,7 @@
             return true;
         });
         const page=candidates.find(item=>item.score>=(role==="background"?15:18))?.page,info=page?.imageinfo?.[0];
-        return info?{url:info.thumburl||info.url,title:page.title}:null;
+        return info?{url:info.thumburl||info.url,fallbackUrl:info.url,width:info.thumbwidth||info.width||0,height:info.thumbheight||info.height||0,title:page.title}:null;
     }
     async function searchDofuspediaImages(event) {
         const plan=getImagePlan(event);
@@ -278,13 +278,24 @@
         return {background:safeBackground,bosses};
     }
 
-    function loadCanvasImage(url) {
-        return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.crossOrigin = "anonymous";
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error("La imagen no permite su uso en el PNG (posible restricción CORS)."));
-            image.src = url;
+    function loadCanvasImage(url,fallbackUrl=null,expectedWidth=0,expectedHeight=0) {
+        const load=source=>new Promise((resolve,reject)=>{
+            const image=new Image();
+            image.crossOrigin="anonymous";
+            image.onload=()=>{
+                const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
+                if((expectedWidth&&width!==expectedWidth)||(expectedHeight&&height!==expectedHeight)){
+                    reject(new Error("La miniatura recibida no coincide con las dimensiones del archivo."));
+                    return;
+                }
+                resolve(image);
+            };
+            image.onerror=()=>reject(new Error("La imagen no se pudo cargar."));
+            image.src=source;
+        });
+        return load(url).catch(error=>{
+            if(fallbackUrl&&fallbackUrl!==url)return load(fallbackUrl);
+            throw error;
         });
     }
 
@@ -427,12 +438,15 @@
                 pages.slice(0,18).forEach(page=>{
                     const info=page.imageinfo?.[0],url=info?.thumburl||info?.url;if(!url)return;
                     const item=document.createElement("div");item.className="share-image-result";
+                    const fallbackUrl=info.url,expectedWidth=info.thumbwidth||info.width||0,expectedHeight=info.thumbheight||info.height||0;
                     const img=document.createElement("img");img.src=url;img.alt=page.title;img.loading="lazy";
+                    img.addEventListener("error",()=>{if(fallbackUrl&&img.dataset.original!=="true"){img.dataset.original="true";img.src=fallbackUrl;}});
+                    img.addEventListener("load",()=>{if(fallbackUrl&&img.dataset.original!=="true"&&((expectedWidth&&img.naturalWidth!==expectedWidth)||(expectedHeight&&img.naturalHeight!==expectedHeight))){img.dataset.original="true";img.src=fallbackUrl;}});
                     const title=document.createElement("span");title.textContent=page.title.replace(/^(File|Archivo):/i,"");
                     const bg=document.createElement("button");bg.type="button";bg.textContent="Usar de fondo";
-                    bg.addEventListener("click",async()=>{bg.disabled=true;try{selected.background=await loadCanvasImage(url);await redraw();note.textContent="Fondo seleccionado y añadido a la vista previa: "+title.textContent;}catch(e){alert("No se pudo usar esta imagen: "+e.message);}bg.disabled=false;});
+                    bg.addEventListener("click",async()=>{bg.disabled=true;try{selected.background=await loadCanvasImage(url,fallbackUrl,expectedWidth,expectedHeight);await redraw();note.textContent="Fondo seleccionado y añadido a la vista previa: "+title.textContent;}catch(e){alert("No se pudo usar esta imagen: "+e.message);}bg.disabled=false;});
                     const boss=document.createElement("button");boss.type="button";boss.textContent="Añadir como jefe";
-                    boss.addEventListener("click",async()=>{boss.disabled=true;try{selected.bosses.push(await loadCanvasImage(url));await redraw();note.textContent="Jefe añadido y mostrado en la vista previa: "+title.textContent+" ("+selected.bosses.length+").";}catch(e){alert("No se pudo usar esta imagen: "+e.message);}boss.disabled=false;});
+                    boss.addEventListener("click",async()=>{boss.disabled=true;try{selected.bosses.push(await loadCanvasImage(url,fallbackUrl,expectedWidth,expectedHeight));await redraw();note.textContent="Jefe añadido y mostrado en la vista previa: "+title.textContent+" ("+selected.bosses.length+").";}catch(e){alert("No se pudo usar esta imagen: "+e.message);}boss.disabled=false;});
                     item.append(img,title,bg,boss);results.appendChild(item);
                 });
             }catch(error){results.textContent="No se pudo buscar en Dofuspedia: "+error.message;}
@@ -449,8 +463,8 @@
             const selected={background:null,bosses:[]};let warning="";
             try{
                 const found=await searchDofuspediaImages(event);
-                if(found.background?.url){try{selected.background=await loadCanvasImage(found.background.url);}catch(e){console.warn("No se pudo cargar el fondo:",e);}}
-                for(const boss of found.bosses||[]){try{selected.bosses.push(await loadCanvasImage(boss.url));}catch(e){console.warn("No se pudo cargar jefe:",e);}}
+                if(found.background?.url){try{selected.background=await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height);}catch(e){console.warn("No se pudo cargar el fondo:",e);}}
+                for(const boss of found.bosses||[]){try{selected.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height));}catch(e){console.warn("No se pudo cargar jefe:",e);}}
                 if(!selected.background&&!selected.bosses.length)warning="No se encontraron imágenes compatibles para esta actividad.";
             }catch(e){console.warn("Imágenes de Dofuspedia no disponibles:",e);warning=e.message;}
             const canvas=await drawCard(event,participants,selected.background,selected.bosses);
