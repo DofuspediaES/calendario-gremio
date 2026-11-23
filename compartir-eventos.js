@@ -635,7 +635,8 @@
         previewStates.delete("__draft__");
     }
     async function searchEventTitleSuggestions(term){
-        const params=new URLSearchParams({action:"query",list:"search",srsearch:term,srwhat:"title",srnamespace:"0",srlimit:"8",format:"json",origin:"*"});
+        const searchTerm=cleanText(term).replace(/\s+/g," ")+"*";
+        const params=new URLSearchParams({action:"query",list:"search",srsearch:searchTerm,srwhat:"title",srnamespace:"0",srlimit:"8",format:"json",origin:"*"});
         const response=await fetch(API+"?"+params.toString());if(!response.ok)throw new Error("HTTP "+response.status);
         const data=await response.json();return(data.query?.search||[]).map(page=>page.title).filter(Boolean);
     }
