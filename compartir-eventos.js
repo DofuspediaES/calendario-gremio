@@ -416,7 +416,7 @@
         card.appendChild(panel);
 
         const redraw = async () => {
-            state.participants = event.id === "__draft__" ? [] : (typeof getEventParticipants === "function" ? getEventParticipants(event.id) : []);
+            state.participants = state.event.id === "__draft__" ? [] : (typeof getEventParticipants === "function" ? getEventParticipants(state.event.id) : []);
             const rendered = await drawCard(state.event, state.participants, state.background, state.bosses);
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
             ctx.drawImage(rendered, 0, 0);
@@ -597,46 +597,65 @@
         };
     }
 
-    function openDraftPreview() {
-        const host = document.getElementById("eventImageFormPreview");
-        const button = document.getElementById("generateEventImagePreview");
-        if (!host || !button) return;
+    let draftSearchTimer = null;
+    let draftSearchSequence = 0;
+    let titleSuggestionTimer = null;
+    let titleSuggestionSequence = 0;
+    async function refreshDraftImages() {
+        const state=previewStates.get("__draft__"); if(!state)return;
+        state.event=readDraftEvent(); const sequence=++draftSearchSequence;
+        const status=document.querySelector("#eventImageFormPreview .event-image-preview-status");
+        if(!state.event.name||state.event.name.length<3){state.background=null;state.bosses=[];if(state.redraw)await state.redraw();if(status)status.textContent="Escribe el nombre para buscar imágenes en Dofuspedia";return}
+        if(status)status.textContent="Buscando imágenes en Dofuspedia…";
+        try{
+            const found=await searchDofuspediaImages(state.event);
+            if(sequence!==draftSearchSequence||!previewStates.has("__draft__"))return;
+            state.background=found.background?.url?await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height):null;
+            state.bosses=[];
+            for(const boss of found.bosses||[]){try{state.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height))}catch(error){console.warn("No se pudo cargar la imagen del jefe:",error)}}
+            if(state.redraw)await state.redraw();
+            if(status)status.textContent=found.background||found.bosses.length?"Imagen generada con recursos de Dofuspedia":"Imagen generada; no se encontraron imágenes para este título";
+        }catch(error){console.warn("No se pudieron buscar imágenes para la vista previa:",error);if(status)status.textContent="Imagen generada sin fondo; puedes buscar imágenes manualmente"}
+    }
+    function openDraftPreview(){
+        const host=document.getElementById("eventImageFormPreview");if(!host)return;
         previewStates.delete("__draft__");
-        host.querySelector(".event-image-preview")?.remove();
-        button.hidden = false;
-        button.disabled = false;
-        button.textContent = "Generar vista previa";
-        button.onclick = async () => {
-            const draft = readDraftEvent();
-            if (!document.getElementById("eventName")?.value.trim() ||
-                !document.getElementById("eventDate")?.value ||
-                !document.getElementById("eventTime")?.value) {
-                alert("Completa el nombre, la fecha y la hora para generar la imagen.");
-                return;
-            }
-            await generatePreview(draft, host, button);
-        };
+        const state={event:readDraftEvent(),participants:[],background:null,bosses:[]};previewStates.set("__draft__",state);
+        renderInlinePreview(host,state.event,state).then(()=>{const query=host.querySelector(".share-image-query");if(query)query.placeholder="Ej. Mazmorra del Conde Kontatrás…";refreshDraftImages()}).catch(error=>console.error("No se pudo iniciar la vista previa:",error));
     }
-
-    function updateDraftPreview() {
-        const state = previewStates.get("__draft__");
-        if (!state) return;
-        state.event = readDraftEvent();
-        if (state.redraw) state.redraw().catch(error => console.warn("No se pudo actualizar la vista previa:", error));
+    function updateDraftPreview(){
+        const state=previewStates.get("__draft__");if(!state)return;
+        state.event=readDraftEvent();if(state.redraw)state.redraw().catch(error=>console.warn("No se pudo actualizar la vista previa:",error));
+        clearTimeout(draftSearchTimer);draftSearchTimer=setTimeout(refreshDraftImages,500);
     }
-
-    function closeDraftPreview() {
-        const host = document.getElementById("eventImageFormPreview");
-        if (host) host.querySelector(".event-image-preview")?.remove();
+    function closeDraftPreview(){
+        clearTimeout(draftSearchTimer);draftSearchSequence++;
+        const host=document.getElementById("eventImageFormPreview");
+        if(host)host.innerHTML='<div class="event-image-form-placeholder">🖼️ La vista previa se generará automáticamente al abrir el formulario.</div>';
         previewStates.delete("__draft__");
-        const button = document.getElementById("generateEventImagePreview");
-        if (button) {
-            button.hidden = false;
-            button.disabled = false;
-            button.textContent = "Generar vista previa";
-        }
     }
-
+    async function searchEventTitleSuggestions(term){
+        const params=new URLSearchParams({action:"query",list:"search",srsearch:term,srwhat:"title",srnamespace:"0",srlimit:"8",format:"json",origin:"*"});
+        const response=await fetch(API+"?"+params.toString());if(!response.ok)throw new Error("HTTP "+response.status);
+        const data=await response.json();return(data.query?.search||[]).map(page=>page.title).filter(Boolean);
+    }
+    function setupTitleSuggestions(){
+        const input=document.getElementById("eventName"),list=document.getElementById("eventNameSuggestions");if(!input||!list)return;
+        const hide=()=>{list.innerHTML="";list.classList.remove("is-visible")};
+        input.addEventListener("input",()=>{
+            const term=cleanText(input.value);clearTimeout(titleSuggestionTimer);const sequence=++titleSuggestionSequence;
+            if(term.length<3){hide();return}
+            titleSuggestionTimer=setTimeout(async()=>{
+                try{
+                    const titles=await searchEventTitleSuggestions(term);if(sequence!==titleSuggestionSequence)return;list.innerHTML="";
+                    titles.forEach(title=>{const option=document.createElement("button");option.type="button";option.className="event-name-suggestion";option.textContent=title;option.setAttribute("role","option");option.addEventListener("click",()=>{input.value=title;hide();updateDraftPreview();input.dispatchEvent(new Event("change",{bubbles:true}))});list.appendChild(option)});
+                    if(titles.length)list.classList.add("is-visible");else hide();
+                }catch(error){console.warn("No se pudieron cargar sugerencias de Dofuspedia:",error);hide()}
+            },250);
+        });
+        input.addEventListener("keydown",event=>{if(event.key==="Escape")hide()});
+        document.addEventListener("click",event=>{if(event.target!==input&&!list.contains(event.target))hide()});
+    }
     function promoteDraft(event) {
         const state = previewStates.get("__draft__");
         if (!state || !event?.id) return;
@@ -666,6 +685,7 @@
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
     window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
+    setupTitleSuggestions();
     ["eventName", "eventType", "eventDate", "eventTime", "eventCapacity", "eventDescription"].forEach(id => {
         const field = document.getElementById(id);
         field?.addEventListener("input", updateDraftPreview);
