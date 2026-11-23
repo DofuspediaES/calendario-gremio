@@ -186,3 +186,19 @@ button:not(:disabled):active { transform:scale(.97); }
 @media(max-width:420px){.event-image-preview-actions{grid-template-columns:1fr}}
 
 .event-image-form-preview{margin:16px 0;padding:13px;background:#1d2024;border:1px solid #4c535a;border-left:3px solid #f73d00;border-radius:7px}.event-image-form-preview>strong{display:block;color:#ff6a36;font-size:13px}.event-image-form-preview>p{margin:6px 0 10px;color:#c1c6ca;font-size:12px}.event-image-form-preview>button[hidden]{display:none}
+
+#eventModal .modal-content{width:min(1080px,96vw);max-width:1080px}
+#eventForm{display:grid;grid-template-columns:minmax(300px,.85fr) minmax(0,1.15fr);gap:20px;align-items:start}
+.event-form-fields{min-width:0}
+.event-image-form-preview{min-width:0;margin:0;padding:0;background:transparent;border:0}
+.event-image-form-placeholder{min-height:250px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#aeb4ba;background:#1d2024;border:1px dashed #555b61;border-radius:8px;font-size:13px}
+.event-image-form-preview .event-image-preview{margin:0}
+.event-image-form-preview .event-image-preview-layout{grid-template-columns:minmax(0,1fr)}
+.event-image-form-preview .event-image-preview-art{min-width:0}
+.event-image-form-preview .event-image-preview-canvas{width:100%}
+.event-name-suggestions{display:none;position:relative;z-index:20;margin-top:4px;background:#202328;border:1px solid #555b61;border-radius:6px;max-height:230px;overflow-y:auto}
+.event-name-suggestions.is-visible{display:block}
+.event-name-suggestion{display:block;width:100%;padding:9px 11px;text-align:left;border:0;border-bottom:1px solid #3b4147;background:transparent;color:#f1f1f1;font-size:12px;cursor:pointer}
+.event-name-suggestion:hover{background:#343a40;color:#ff7649}
+#eventForm .event-form-fields>label{position:relative}
+@media(max-width:760px){#eventModal .modal-content{width:100%;max-width:560px}#eventForm{grid-template-columns:1fr;gap:16px}.event-image-form-preview{grid-row:2}.event-form-fields{grid-row:1}.event-image-form-preview .event-image-preview-layout{grid-template-columns:1fr}}
