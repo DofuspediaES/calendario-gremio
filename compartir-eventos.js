@@ -633,7 +633,7 @@
     function closeDraftPreview(){
         clearTimeout(draftSearchTimer);draftSearchSequence++;
         const host=document.getElementById("eventImageGeneratorPreview"),modal=document.getElementById("eventImageGeneratorModal");
-        if(host)host.innerHTML='<div class="event-image-form-placeholder">La imagen se generará con los datos del formulario.</div>';
+        if(host)host.innerHTML="";
         modal?.classList.add("hidden");previewStates.delete("__draft__");
     }
     let titleJsonpSequence=0;
