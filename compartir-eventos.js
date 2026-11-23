@@ -5,7 +5,7 @@
 (() => {
     "use strict";
 
-    const API = "https://dofuspedia.fandom.com/es/api.php";
+    const API = "https://dofuspedia.fandom.com/api.php";
     const WIDTH = 800;
     const HEIGHT = 450;
     const imageCache = new Map();
@@ -618,9 +618,11 @@
         }catch(error){console.warn("No se pudieron buscar imágenes para la vista previa:",error);if(status)status.textContent="Imagen generada sin fondo; puedes buscar imágenes manualmente"}
     }
     function openDraftPreview(){
-        const host=document.getElementById("eventImageFormPreview");if(!host)return;
-        previewStates.delete("__draft__");
-        const state={event:readDraftEvent(),participants:[],background:null,bosses:[]};previewStates.set("__draft__",state);
+        const host=document.getElementById("eventImageGeneratorPreview"),modal=document.getElementById("eventImageGeneratorModal");if(!host||!modal)return;
+        modal.classList.remove("hidden");
+        let state=previewStates.get("__draft__");
+        if(state&&state.redraw){state.event=readDraftEvent();state.redraw().catch(error=>console.warn("No se pudo actualizar la vista previa:",error));refreshDraftImages();return}
+        state={event:readDraftEvent(),participants:[],background:null,bosses:[]};previewStates.set("__draft__",state);
         renderInlinePreview(host,state.event,state).then(()=>{const query=host.querySelector(".share-image-query");if(query)query.placeholder="Ej. Mazmorra del Conde Kontatrás…";refreshDraftImages()}).catch(error=>console.error("No se pudo iniciar la vista previa:",error));
     }
     function updateDraftPreview(){
@@ -630,15 +632,32 @@
     }
     function closeDraftPreview(){
         clearTimeout(draftSearchTimer);draftSearchSequence++;
-        const host=document.getElementById("eventImageFormPreview");
-        if(host)host.innerHTML='<div class="event-image-form-placeholder">🖼️ La vista previa se generará automáticamente al abrir el formulario.</div>';
-        previewStates.delete("__draft__");
+        const host=document.getElementById("eventImageGeneratorPreview"),modal=document.getElementById("eventImageGeneratorModal");
+        if(host)host.innerHTML='<div class="event-image-form-placeholder">La imagen se generará con los datos del formulario.</div>';
+        modal?.classList.add("hidden");previewStates.delete("__draft__");
+    }
+    let titleJsonpSequence=0;
+    function requestTitleJsonp(params){
+        return new Promise((resolve,reject)=>{
+            const callback="__dofuspediaTitleSearch"+(++titleJsonpSequence),script=document.createElement("script");
+            params.set("callback",callback);params.set("format","json");
+            const cleanup=()=>{delete window[callback];script.remove();clearTimeout(timer)};
+            const timer=setTimeout(()=>{cleanup();reject(new Error("Tiempo de espera agotado al consultar Dofuspedia"))},9000);
+            window[callback]=data=>{cleanup();resolve(data)};
+            script.onerror=()=>{cleanup();reject(new Error("No se pudo conectar con la API de Dofuspedia"))};
+            script.src=API+"?"+params.toString();document.head.appendChild(script);
+        });
     }
     async function searchEventTitleSuggestions(term){
-        const searchTerm=cleanText(term).replace(/\s+/g," ")+"*";
-        const params=new URLSearchParams({action:"query",list:"search",srsearch:searchTerm,srwhat:"title",srnamespace:"0",srlimit:"8",format:"json",origin:"*"});
-        const response=await fetch(API+"?"+params.toString());if(!response.ok)throw new Error("HTTP "+response.status);
-        const data=await response.json();return(data.query?.search||[]).map(page=>page.title).filter(Boolean);
+        const query=cleanText(term).replace(/\s+/g," ");
+        const params=new URLSearchParams({action:"opensearch",search:query,namespace:"0",limit:"8",profile:"normal-subphrases"});
+        const data=await requestTitleJsonp(params);
+        let titles=Array.isArray(data?.[1])?data[1].filter(Boolean):[];
+        if(!titles.length){
+            const fallback=new URLSearchParams({action:"query",list:"search",srsearch:query,srwhat:"title",srnamespace:"0",srlimit:"8"});
+            const result=await requestTitleJsonp(fallback);titles=(result.query?.search||[]).map(page=>page.title).filter(Boolean);
+        }
+        return [...new Set(titles)].slice(0,8);
     }
     function setupTitleSuggestions(){
         const input=document.getElementById("eventName"),list=document.getElementById("eventNameSuggestions");if(!input||!list)return;
@@ -663,10 +682,9 @@
         previewStates.delete("__draft__");
         state.event = event;
         previewStates.set(String(event.id), state);
-        const host = document.getElementById("eventImageFormPreview");
+        const host = document.getElementById("eventImageGeneratorPreview");
         host?.querySelector(".event-image-preview")?.remove();
-        const button = document.getElementById("generateEventImagePreview");
-        if (button) button.hidden = true;
+        document.getElementById("eventImageGeneratorModal")?.classList.add("hidden");
     }
 
     async function generateCreatedEvent(eventId) {
@@ -685,6 +703,10 @@
     document.addEventListener("DOMContentLoaded", addPreviewButtons);
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
+    document.getElementById("openEventImageGenerator")?.addEventListener("click",openDraftPreview);
+    const imageGeneratorModal=document.getElementById("eventImageGeneratorModal");
+    document.getElementById("closeEventImageGenerator")?.addEventListener("click",()=>imageGeneratorModal?.classList.add("hidden"));
+    imageGeneratorModal?.addEventListener("click",event=>{if(event.target===imageGeneratorModal)imageGeneratorModal.classList.add("hidden")});
     window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
     setupTitleSuggestions();
     ["eventName", "eventType", "eventDate", "eventTime", "eventCapacity", "eventDescription"].forEach(id => {
