@@ -100,7 +100,7 @@
     }
 
     function getEventTypeLabel(type) {
-        return ({dungeon:"MAZMORRA",quest:"MISIONES",infinite_dreams:"SUEÑOS INFINITOS",commission:"ENCARGO",raid:"RAID",farm:"DROP / FARM",wanted:"BUSCA Y CAPTURA",other:"OTRA ACTIVIDAD"})[type]||"ACTIVIDAD";
+        return ({dungeon:"MAZMORRA",quest:"MISIÓN",infinite_dreams:"SUEÑOS INFINITOS",commission:"ENCARGO",raid:"RAID",farm:"DROP / FARM",wanted:"BUSCA Y CAPTURA",other:"OTRA ACTIVIDAD"})[type]||"ACTIVIDAD";
     }
 
     function wrapCanvasText(ctx,text,maxWidth) {
