@@ -2602,6 +2602,7 @@ if (addEventButton) {
         }
 
         eventModal.classList.remove("hidden");
+        window.EventImageEditor?.openDraftPreview();
 
     });
 
