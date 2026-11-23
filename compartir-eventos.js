@@ -415,8 +415,7 @@
         card.appendChild(panel);
 
         const redraw = async () => {
-            state.event = event;
-            state.participants = typeof getEventParticipants === "function" ? getEventParticipants(event.id) : [];
+            state.participants = event.id === "__draft__" ? [] : (typeof getEventParticipants === "function" ? getEventParticipants(event.id) : []);
             const rendered = await drawCard(state.event, state.participants, state.background, state.bosses);
             ctx.clearRect(0, 0, WIDTH, HEIGHT);
             ctx.drawImage(rendered, 0, 0);
@@ -518,9 +517,10 @@
             }
         });
         downloadButton.addEventListener("click", async () => {
-            try { downloadBlob(await canvasBlob(canvas), getFilename(event)); }
+            try { downloadBlob(await canvasBlob(canvas), getFilename(state.event)); }
             catch (error) { status.textContent = error.message; }
         });
+        state.redraw = redraw;
         try { await redraw(); }
         catch (error) { status.textContent = "No se pudo generar la imagen: " + error.message; }
     }
@@ -583,6 +583,71 @@
         });
     }
 
+    function readDraftEvent() {
+        return {
+            id: "__draft__",
+            name: document.getElementById("eventName")?.value.trim() || "Actividad del gremio",
+            type: document.getElementById("eventType")?.value || "other",
+            event_date: document.getElementById("eventDate")?.value || new Date().toISOString().slice(0, 10),
+            event_time: document.getElementById("eventTime")?.value || "21:00",
+            capacity: Number(document.getElementById("eventCapacity")?.value || 8),
+            description: document.getElementById("eventDescription")?.value.trim() || "",
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+    }
+
+    function openDraftPreview() {
+        const host = document.getElementById("eventImageFormPreview");
+        const button = document.getElementById("generateEventImagePreview");
+        if (!host || !button) return;
+        previewStates.delete("__draft__");
+        host.querySelector(".event-image-preview")?.remove();
+        button.hidden = false;
+        button.disabled = false;
+        button.textContent = "Generar vista previa";
+        button.onclick = async () => {
+            const draft = readDraftEvent();
+            if (!document.getElementById("eventName")?.value.trim() ||
+                !document.getElementById("eventDate")?.value ||
+                !document.getElementById("eventTime")?.value) {
+                alert("Completa el nombre, la fecha y la hora para generar la imagen.");
+                return;
+            }
+            await generatePreview(draft, host, button);
+        };
+    }
+
+    function updateDraftPreview() {
+        const state = previewStates.get("__draft__");
+        if (!state) return;
+        state.event = readDraftEvent();
+        if (state.redraw) state.redraw().catch(error => console.warn("No se pudo actualizar la vista previa:", error));
+    }
+
+    function closeDraftPreview() {
+        const host = document.getElementById("eventImageFormPreview");
+        if (host) host.querySelector(".event-image-preview")?.remove();
+        previewStates.delete("__draft__");
+        const button = document.getElementById("generateEventImagePreview");
+        if (button) {
+            button.hidden = false;
+            button.disabled = false;
+            button.textContent = "Generar vista previa";
+        }
+    }
+
+    function promoteDraft(event) {
+        const state = previewStates.get("__draft__");
+        if (!state || !event?.id) return;
+        previewStates.delete("__draft__");
+        state.event = event;
+        previewStates.set(String(event.id), state);
+        const host = document.getElementById("eventImageFormPreview");
+        host?.querySelector(".event-image-preview")?.remove();
+        const button = document.getElementById("generateEventImagePreview");
+        if (button) button.hidden = true;
+    }
+
     async function generateCreatedEvent(eventId) {
         const event = typeof events !== "undefined" && Array.isArray(events)
             ? events.find(item => String(item.id) === String(eventId)) : null;
@@ -598,6 +663,12 @@
     document.addEventListener("DOMContentLoaded", addPreviewButtons);
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
+    window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
+    ["eventName", "eventType", "eventDate", "eventTime", "eventCapacity", "eventDescription"].forEach(id => {
+        const field = document.getElementById(id);
+        field?.addEventListener("input", updateDraftPreview);
+        field?.addEventListener("change", updateDraftPreview);
+    });
     setTimeout(addPreviewButtons, 1200);
-    console.log("🖼️ Vista previa de imágenes integrada en las actividades.");
+    console.log("🖼️ Editor de imágenes disponible en el formulario y en las actividades publicadas.");
 })();
