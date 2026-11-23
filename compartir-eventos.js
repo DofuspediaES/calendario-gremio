@@ -618,8 +618,7 @@
         }catch(error){console.warn("No se pudieron buscar imágenes para la vista previa:",error);if(status)status.textContent="Imagen generada sin fondo; puedes buscar imágenes manualmente"}
     }
     function openDraftPreview(){
-        const host=document.getElementById("eventImageGeneratorPreview"),modal=document.getElementById("eventImageGeneratorModal");if(!host||!modal)return;
-        modal.classList.remove("hidden");
+        const host=document.getElementById("eventImageGeneratorPreview");if(!host)return;
         let state=previewStates.get("__draft__");
         if(state&&state.redraw){state.event=readDraftEvent();state.redraw().catch(error=>console.warn("No se pudo actualizar la vista previa:",error));refreshDraftImages();return}
         state={event:readDraftEvent(),participants:[],background:null,bosses:[]};previewStates.set("__draft__",state);
@@ -632,9 +631,9 @@
     }
     function closeDraftPreview(){
         clearTimeout(draftSearchTimer);draftSearchSequence++;
-        const host=document.getElementById("eventImageGeneratorPreview"),modal=document.getElementById("eventImageGeneratorModal");
+        const host=document.getElementById("eventImageGeneratorPreview");
         if(host)host.innerHTML="";
-        modal?.classList.add("hidden");previewStates.delete("__draft__");
+        previewStates.delete("__draft__");
     }
     let titleJsonpSequence=0;
     function requestTitleJsonp(params){
@@ -684,7 +683,6 @@
         previewStates.set(String(event.id), state);
         const host = document.getElementById("eventImageGeneratorPreview");
         host?.querySelector(".event-image-preview")?.remove();
-        document.getElementById("eventImageGeneratorModal")?.classList.add("hidden");
     }
 
     async function generateCreatedEvent(eventId) {
@@ -703,9 +701,6 @@
     document.addEventListener("DOMContentLoaded", addPreviewButtons);
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
-    document.getElementById("openEventImageGenerator")?.addEventListener("click",openDraftPreview);
-    const imageGeneratorModal=document.getElementById("eventImageGeneratorModal");
-    document.getElementById("closeEventImageGenerator")?.addEventListener("click",()=>imageGeneratorModal?.classList.add("hidden"));
     imageGeneratorModal?.addEventListener("click",event=>{if(event.target===imageGeneratorModal)imageGeneratorModal.classList.add("hidden")});
     window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
     setupTitleSuggestions();
