@@ -5,7 +5,7 @@
 (() => {
     "use strict";
 
-    const API = "https://dofuspedia.fandom.com/api.php";
+    const API = "https://dofuspedia.fandom.com/es/api.php";
     const WIDTH = 800;
     const HEIGHT = 450;
     const imageCache = new Map();
@@ -282,7 +282,9 @@
         const load=source=>new Promise((resolve,reject)=>{
             const image=new Image();
             image.crossOrigin="anonymous";
+            const timeout=setTimeout(()=>{image.src="";reject(new Error("La carga de la imagen agotó el tiempo de espera."))},3500);
             image.onload=()=>{
+                clearTimeout(timeout);
                 const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height;
                 if((expectedWidth&&width!==expectedWidth)||(expectedHeight&&height!==expectedHeight)){
                     reject(new Error("La miniatura recibida no coincide con las dimensiones del archivo."));
@@ -290,7 +292,7 @@
                 }
                 resolve(image);
             };
-            image.onerror=()=>reject(new Error("La imagen no se pudo cargar."));
+            image.onerror=()=>{clearTimeout(timeout);reject(new Error("La imagen no se pudo cargar."))};
             image.src=source;
         });
         return load(url).catch(error=>{
