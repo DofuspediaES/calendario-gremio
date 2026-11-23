@@ -288,6 +288,11 @@
         });
     }
 
+    function loadGuildShield() {
+        if(!imageCache.has("guild-shield"))imageCache.set("guild-shield",loadCanvasImage("escudo.jpg").catch(error=>{console.warn("No se pudo cargar el escudo del gremio:",error);return null;}));
+        return imageCache.get("guild-shield");
+    }
+
     function drawCover(ctx, image, x, y, width, height) {
         const scale = Math.max(width / image.width, height / image.height);
         const sw = width / scale;
@@ -311,8 +316,9 @@
             bosses.forEach((boss,index)=>{if(!boss)return;const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height),w=boss.width*scale,h=boss.height*scale,x=count>1?520+index*(slotWidth+4)+(slotWidth-w)/2:770-w;ctx.save();ctx.shadowColor="rgba(0,0,0,.65)";ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(boss,x,215-h/2,w,h);ctx.restore();});
         }
         ctx.strokeStyle="#f73d00";ctx.lineWidth=3;ctx.strokeRect(16,16,WIDTH-32,HEIGHT-32);
-        ctx.fillStyle="#f73d00";ctx.fillRect(42,45,5,43);
-        ctx.textAlign="left";ctx.fillStyle="#f73d00";ctx.font="bold 16px Tahoma,sans-serif";ctx.fillText("AVENTUWEWOS DEL WEY WABBIT",60,63);
+        const guildShield=await loadGuildShield();
+        if(guildShield){ctx.save();ctx.drawImage(guildShield,42,36,46,46);ctx.restore();}
+        ctx.textAlign="left";ctx.fillStyle="#f73d00";ctx.font="bold 16px Tahoma,sans-serif";ctx.fillText("AVENTUWEWOS DEL WEY WABBIT",guildShield?100:60,63);
 
         const titleWidth=bosses?.length?440:675;
         let fontSize=39,lines=[];
