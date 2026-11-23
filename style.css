@@ -231,3 +231,7 @@ button:not(:disabled):active { transform:scale(.97); }
 .event-image-generator-preview .event-image-preview-layout{grid-template-columns:1fr}
 }
 @media(max-width:420px){.event-image-generator-preview .event-image-preview-actions{grid-template-columns:1fr}}
+
+/* El generador permanece vacío hasta que el usuario lo abre; evita espacio reservado. */
+.event-image-generator-preview:empty{display:none}
+.event-image-generator-preview .event-image-form-placeholder{display:none}
