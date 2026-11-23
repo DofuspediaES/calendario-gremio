@@ -339,19 +339,25 @@
         const groups=groupTimes(event);
         const flagImages=await Promise.all([...new Set(groups.flatMap(group=>group.countries.map(item=>item.code)))].map(async code=>[code,await loadFlag(code)]));
         const flags=new Map(flagImages);
-        const columns=4,cellWidth=680/columns;
+        ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
+        const scheduleX=62,scheduleWidth=676,groupGap=groups.length>1?Math.max(12,(scheduleWidth-groups.reduce((sum,group)=>sum+group.countries.length*16+5+ctx.measureText(group.time).width,0))/(groups.length-1)):0;
+        let scheduleCursor=scheduleX;
         groups.forEach((group,index)=>{
-            const column=index%columns,row=Math.floor(index/columns);
-            const groupWidth=group.countries.length*18+43;
-            const gx=62+column*cellWidth+(cellWidth-groupWidth)/2,gy=365+row*23;
-            let cx=gx;
+            const timeWidth=ctx.measureText(group.time).width;
+            const groupWidth=group.countries.length*16+5+timeWidth;
+            const gy=365;
+            let cx=scheduleCursor;
             group.countries.forEach(country=>{
                 const flag=flags.get(country.code);
-                if(flag)ctx.drawImage(flag,cx,gy-11,15,11);
-                cx+=18;
+                if(flag)ctx.drawImage(flag,cx,gy-11,14,11);
+                cx+=16;
             });
-            ctx.fillStyle="#fff";ctx.font="bold 13px Tahoma,sans-serif";ctx.textAlign="left";
-            ctx.fillText(group.time,cx+2,gy);
+            ctx.fillStyle="#fff";ctx.fillText(group.time,cx+2,gy);
+            scheduleCursor+=groupWidth+groupGap;
+            if(index<groups.length-1){
+                const separatorX=scheduleCursor-groupGap/2;
+                ctx.strokeStyle="#f73d00";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(separatorX,351);ctx.lineTo(separatorX,369);ctx.stroke();
+            }
         });
         ctx.textAlign="right";ctx.fillStyle="rgba(255,255,255,.62)";ctx.font="11px Tahoma,sans-serif";ctx.fillText("CALENDARIO DEL GREMIO · TAL KASHA",738,438);
         ctx.restore();
