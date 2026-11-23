@@ -159,40 +159,111 @@
         });
         return [...variants].filter(Boolean).slice(0,10);
     }
+    async function searchPrefixPages(term) {
+        const prefix = cleanText(term).replace(/^(File|Archivo):/i, "");
+        if (!prefix) return [];
+        const names = new Set();
+        let continuation = null;
+        let requests = 0;
+        do {
+            const params = new URLSearchParams({
+                action: "query",
+                list: "allimages",
+                aiprefix: prefix,
+                ailimit: "max",
+                aisort: "name",
+                format: "json",
+                origin: "*"
+            });
+            if (continuation) {
+                Object.entries(continuation).forEach(([key, value]) => params.set(key, value));
+            }
+            const response = await fetch(API + "?" + params.toString());
+            if (!response.ok) throw new Error("No se pudieron buscar archivos por nombre en Dofuspedia (HTTP " + response.status + ").");
+            const data = await response.json();
+            (data.query?.allimages || []).forEach(file => {
+                if (file.name) names.add("File:" + file.name);
+            });
+            continuation = data.continue || null;
+            requests++;
+        } while (continuation && requests < 3 && names.size < 1500);
+
+        const titles = [...names];
+        const pages = [];
+        for (let i = 0; i < titles.length; i += 50) {
+            const params = new URLSearchParams({
+                action: "query",
+                titles: titles.slice(i, i + 50).join("|"),
+                prop: "info",
+                format: "json",
+                origin: "*"
+            });
+            const response = await fetch(API + "?" + params.toString());
+            if (!response.ok) throw new Error("No se pudieron consultar los archivos encontrados por nombre.");
+            const data = await response.json();
+            pages.push(...Object.values(data.query?.pages || {}).filter(page => page.pageid));
+        }
+        return pages;
+    }
+
     async function searchPages(term) {
-        const variants=getSearchVariants(term);
-        const extensions=[".png",".jpg",".jpeg",".webp",".gif"];
-        const searchTerms=new Set();
-        variants.forEach(value=>{
+        const variants = getSearchVariants(term);
+        const extensions = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+        const searchTerms = new Set();
+        variants.forEach(value => {
             searchTerms.add(value);
-            if(!/\.(png|jpe?g|webp|gif|svg)$/i.test(value)){
-                extensions.forEach(extension=>searchTerms.add(value+extension));
+            if (!/\\.(png|jpe?g|webp|gif|svg)$/i.test(value)) {
+                extensions.forEach(extension => searchTerms.add(value + extension));
             }
         });
-        const terms=[...searchTerms].slice(0,50);
-        const searchExpression=terms.map(value=>'"'+value.replace(/"/g,"")+'"').join(" OR ");
-        const params=new URLSearchParams({action:"query",list:"search",srsearch:searchExpression,srnamespace:"6",srlimit:"50",format:"json",origin:"*"});
-        const response=await fetch(API+"?"+params.toString());
-        if(!response.ok)throw new Error("No se pudo consultar Dofuspedia (HTTP "+response.status+").");
-        const data=await response.json();
-        const searchPages=data.query?.search||[];
-        // La consulta de títulos exactos incluye las extensiones: algunos archivos solo aparecen así.
-        const exactParams=new URLSearchParams({action:"query",titles:terms.map(value=>"File:"+value).join("|"),prop:"info",format:"json",origin:"*"});
-        const exactResponse=await fetch(API+"?"+exactParams.toString());
-        if(!exactResponse.ok)throw new Error("No se pudieron consultar los nombres exactos de archivos.");
-        const exactData=await exactResponse.json();
-        const exactPages=Object.values(exactData.query?.pages||{}).filter(page=>page.pageid);
-        const matches=new Map();
-        [...searchPages,...exactPages].forEach(page=>matches.set(page.pageid,page));
-        const ids=[...matches.keys()];
-        if(!ids.length)return [];
-        const pages=[];
-        for(let i=0;i<ids.length;i+=50){
-            const imageParams=new URLSearchParams({action:"query",pageids:ids.slice(i,i+50).join("|"),prop:"imageinfo",iiprop:"url|size",iiurlwidth:"900",format:"json",origin:"*"});
-            const imageResponse=await fetch(API+"?"+imageParams.toString());
-            if(!imageResponse.ok)throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP "+imageResponse.status+").");
-            const imageData=await imageResponse.json();
-            pages.push(...Object.values(imageData.query?.pages||{}));
+        const terms = [...searchTerms].slice(0, 50);
+        const searchExpression = terms.map(value => '"' + value.replace(/"/g, "") + '"').join(" OR ");
+        const params = new URLSearchParams({
+            action: "query", list: "search", srsearch: searchExpression,
+            srnamespace: "6", srlimit: "50", format: "json", origin: "*"
+        });
+        const response = await fetch(API + "?" + params.toString());
+        if (!response.ok) throw new Error("No se pudo consultar Dofuspedia (HTTP " + response.status + ").");
+        const data = await response.json();
+        const searchResults = data.query?.search || [];
+
+        const exactParams = new URLSearchParams({
+            action: "query",
+            titles: terms.map(value => "File:" + value).join("|"),
+            prop: "info",
+            format: "json",
+            origin: "*"
+        });
+        const exactResponse = await fetch(API + "?" + exactParams.toString());
+        if (!exactResponse.ok) throw new Error("No se pudieron consultar los nombres exactos de archivos.");
+        const exactData = await exactResponse.json();
+        const exactPages = Object.values(exactData.query?.pages || {}).filter(page => page.pageid);
+
+        // allimages encuentra también variantes cuyo nombre empieza por el término,
+        // por ejemplo «Restos silenciosos -55 -55.png».
+        const prefixPages = await searchPrefixPages(term);
+        const matches = new Map();
+        [...searchResults, ...exactPages, ...prefixPages].forEach(page => {
+            if (page.pageid) matches.set(page.pageid, page);
+        });
+        const ids = [...matches.keys()];
+        if (!ids.length) return [];
+
+        const pages = [];
+        for (let i = 0; i < ids.length; i += 50) {
+            const imageParams = new URLSearchParams({
+                action: "query",
+                pageids: ids.slice(i, i + 50).join("|"),
+                prop: "imageinfo",
+                iiprop: "url|size",
+                iiurlwidth: "900",
+                format: "json",
+                origin: "*"
+            });
+            const imageResponse = await fetch(API + "?" + imageParams.toString());
+            if (!imageResponse.ok) throw new Error("No se pudieron recuperar las imágenes de Dofuspedia (HTTP " + imageResponse.status + ").");
+            const imageData = await imageResponse.json();
+            pages.push(...Object.values(imageData.query?.pages || {}));
         }
         return pages;
     }
@@ -466,7 +537,7 @@
                     results.textContent = "No se encontraron imágenes. Prueba con otro término.";
                     return;
                 }
-                pages.slice(0, 18).forEach(page => {
+                pages.slice(0, 30).forEach(page => {
                     const info = page.imageinfo?.[0], url = info?.thumburl || info?.url;
                     if (!url) return;
                     const item = document.createElement("div");
