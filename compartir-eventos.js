@@ -604,7 +604,7 @@
     async function refreshDraftImages() {
         const state=previewStates.get("__draft__"); if(!state)return;
         state.event=readDraftEvent(); const sequence=++draftSearchSequence;
-        const status=document.querySelector("#eventImageFormPreview .event-image-preview-status");
+        const status=document.querySelector("#eventImageGeneratorPreview .event-image-preview-status");
         if(!state.event.name||state.event.name.length<3){state.background=null;state.bosses=[];if(state.redraw)await state.redraw();if(status)status.textContent="Escribe el nombre para buscar imágenes en Dofuspedia";return}
         if(status)status.textContent="Buscando imágenes en Dofuspedia…";
         try{
@@ -701,7 +701,6 @@
     document.addEventListener("DOMContentLoaded", addPreviewButtons);
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
-    imageGeneratorModal?.addEventListener("click",event=>{if(event.target===imageGeneratorModal)imageGeneratorModal.classList.add("hidden")});
     window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
     setupTitleSuggestions();
     ["eventName", "eventType", "eventDate", "eventTime", "eventCapacity", "eventDescription"].forEach(id => {
