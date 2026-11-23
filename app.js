@@ -2785,6 +2785,7 @@ if (eventForm) {
                     "✅ Evento creado:",
                     data
                 );
+                window.__calendarNewEventId = data.id;
 
                 // ====================================
 // APUNTAR AUTOMÁTICAMENTE AL CREADOR
@@ -2906,6 +2907,10 @@ if (participantError) {
             // ========================================
 
             await loadEvents();
+            if (window.__calendarNewEventId) {
+                window.dispatchEvent(new CustomEvent("calendar:event-created", { detail: { eventId: window.__calendarNewEventId } }));
+                window.__calendarNewEventId = null;
+            }
 
         } catch (error) {
 
