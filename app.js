@@ -2602,6 +2602,7 @@ if (addEventButton) {
         }
 
         eventModal.classList.remove("hidden");
+        window.EventImageEditor?.openDraftPreview();
 
     });
 
@@ -2625,6 +2626,7 @@ if (closeModal) {
         eventForm.reset();
 
         document.getElementById("eventCapacity").value = 8;
+        window.EventImageEditor?.closeDraftPreview();
 
     });
 
@@ -2786,6 +2788,7 @@ if (eventForm) {
                     data
                 );
                 window.__calendarNewEventId = data.id;
+                window.EventImageEditor?.promoteDraft(data);
 
                 // ====================================
 // APUNTAR AUTOMÁTICAMENTE AL CREADOR
