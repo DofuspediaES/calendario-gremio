@@ -284,6 +284,8 @@
         }else{
             if(ratio>=.75&&ratio<=1.25)score+=10;else if(ratio<.75)score+=4;else score-=8;
             if(/monstruo|boss|jefe|personaje|reina|minotot|vortex|kontatras|sombra/i.test(title))score+=8;
+            if(/\.png$/i.test(page.title))score+=12;
+            else if(/\.(jpe?g|webp)$/i.test(page.title))score-=6;
             if(/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title))score-=5;
             if(width>=300)score+=3;
         }
@@ -680,15 +682,19 @@
         const status=document.querySelector("#eventImageGeneratorPreview .event-image-preview-status");
         if(!state.event.name||state.event.name.length<3){state.background=null;state.bosses=[];if(state.redraw)await state.redraw();if(status)status.textContent="Escribe el nombre para buscar imágenes en Dofuspedia";return}
         if(status)status.textContent="Buscando imágenes en Dofuspedia…";
+        const pending=searchDofuspediaImages(state.event);
+        state.imageSearchFor=state.event.name;
+        state.imageSearchPromise=pending;
         try{
-            const found=await searchDofuspediaImages(state.event);
-            if(sequence!==draftSearchSequence||!previewStates.has("__draft__"))return;
+            const found=await pending;
+            if(sequence!==draftSearchSequence||![...previewStates.values()].includes(state))return;
             state.background=found.background?.url?await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height):null;
             state.bosses=[];
             for(const boss of found.bosses||[]){try{state.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height))}catch(error){console.warn("No se pudo cargar la imagen del jefe:",error)}}
             if(state.redraw)await state.redraw();
             if(status)status.textContent=found.background||found.bosses.length?"Imagen generada con recursos de Dofuspedia":"Imagen generada; no se encontraron imágenes para este título";
         }catch(error){console.warn("No se pudieron buscar imágenes para la vista previa:",error);if(status)status.textContent="Imagen generada sin fondo; puedes buscar imágenes manualmente"}
+        finally{if(state.imageSearchPromise===pending)state.imageSearchPromise=null}
     }
     function openDraftPreview(){
         const host=document.getElementById("eventImageGeneratorPreview");if(!host)return;
@@ -748,6 +754,76 @@
         input.addEventListener("keydown",event=>{if(event.key==="Escape")hide()});
         document.addEventListener("click",event=>{if(event.target!==input&&!list.contains(event.target))hide()});
     }
+    function getDiscordBackgroundBounds(image) {
+        const full={x:0,y:0,width:image.width,height:image.height};
+        try{
+            const maxSide=256,scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+            const width=Math.max(1,Math.round(image.width*scale)),height=Math.max(1,Math.round(image.height*scale));
+            const sample=document.createElement("canvas");sample.width=width;sample.height=height;
+            const ctx=sample.getContext("2d",{willReadFrequently:true});ctx.drawImage(image,0,0,width,height);
+            const pixels=ctx.getImageData(0,0,width,height).data;
+            const rowCounts=new Uint16Array(height),colCounts=new Uint16Array(width);
+            for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+                const i=(y*width+x)*4,r=pixels[i],g=pixels[i+1],b=pixels[i+2],a=pixels[i+3];
+                if(a>24&&(r+g+b)/3>28){rowCounts[y]++;colCounts[x]++;}
+            }
+            const rowThreshold=Math.max(2,Math.round(width*.012)),colThreshold=Math.max(2,Math.round(height*.012));
+            let top=0,bottom=height-1,left=0,right=width-1;
+            while(top<bottom&&rowCounts[top]<rowThreshold)top++;
+            while(bottom>top&&rowCounts[bottom]<rowThreshold)bottom--;
+            while(left<right&&colCounts[left]<colThreshold)left++;
+            while(right>left&&colCounts[right]<colThreshold)right--;
+            const cropWidth=right-left+1,cropHeight=bottom-top+1;
+            if(cropWidth<width*.18||cropHeight<height*.18)return full;
+            if(cropWidth>width*.985&&cropHeight>height*.985)return full;
+            return{x:left/scale,y:top/scale,width:cropWidth/scale,height:cropHeight/scale};
+        }catch(error){console.warn("No se pudieron detectar los márgenes del fondo:",error);return full;}
+    }
+
+    function drawDiscordThumbnailBackground(ctx,image,size) {
+        const bounds=getDiscordBackgroundBounds(image);
+        const scale=Math.max(size/bounds.width,size/bounds.height);
+        const sw=size/scale,sh=size/scale;
+        const sx=bounds.x+(bounds.width-sw)/2,sy=bounds.y+(bounds.height-sh)/2;
+        ctx.drawImage(image,sx,sy,sw,sh,0,0,size,size);
+    }
+
+    async function exportDiscordThumbnail(eventId) {
+        const state=previewStates.get(String(eventId));
+        if(!state)return null;
+        if(state.imageSearchPromise)try{await state.imageSearchPromise}catch{}
+        const event=state.event||{};
+        if(normalizeTitle(state.imageSearchFor||"")!==normalizeTitle(event.name||"")){
+            const found=await searchDofuspediaImages(event);
+            state.imageSearchFor=event.name;
+            state.background=found.background?.url?await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height):null;
+            state.bosses=[];
+            for(const boss of found.bosses||[]){try{state.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height))}catch(error){console.warn("No se pudo cargar el jefe para Discord:",error)}}
+        }
+        if(!state.background&&!state.bosses.length)return null;
+        const size=384,canvas=document.createElement("canvas");canvas.width=size;canvas.height=size;
+        const ctx=canvas.getContext("2d");
+        const gradient=ctx.createLinearGradient(0,0,size,size);
+        gradient.addColorStop(0,"#29231c");gradient.addColorStop(.55,"#1b1b1b");gradient.addColorStop(1,"#111820");
+        ctx.fillStyle=gradient;ctx.fillRect(0,0,size,size);
+        if(state.background)drawDiscordThumbnailBackground(ctx,state.background,size);
+        ctx.fillStyle="rgba(10,12,16,.16)";ctx.fillRect(0,0,size,size);
+        const bosses=state.bosses.filter(Boolean).slice(0,3),count=bosses.length;
+        bosses.forEach((boss,index)=>{
+            const slotWidth=count===1?size*.66:size/count*.88,maxHeight=size*.88;
+            const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height);
+            const width=boss.width*scale,height=boss.height*scale;
+            const slotX=count===1?size*.32:index*(size/count)+(size/count-slotWidth)/2;
+            const x=slotX+(slotWidth-width)/2,y=(size-height)/2+size*.025;
+            ctx.save();ctx.shadowColor="rgba(0,0,0,.72)";ctx.shadowBlur=18;ctx.shadowOffsetY=6;
+            ctx.drawImage(boss,x,y,width,height);ctx.restore();
+        });
+        const blob=await canvasBlob(canvas),buffer=await blob.arrayBuffer(),bytes=new Uint8Array(buffer);
+        let binary="";
+        for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+        return btoa(binary);
+    }
+
     function promoteDraft(event) {
         const state = previewStates.get("__draft__");
         if (!state || !event?.id) return;
@@ -774,7 +850,7 @@
     document.addEventListener("DOMContentLoaded", addPreviewButtons);
     window.addEventListener("load", () => setTimeout(addPreviewButtons, 500));
     window.addEventListener("calendar:event-created", event => generateCreatedEvent(event.detail?.eventId));
-    window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft };
+    window.EventImageEditor = { openDraftPreview, updateDraftPreview, closeDraftPreview, promoteDraft, exportDiscordThumbnail };
     setupTitleSuggestions();
     ["eventName", "eventType", "eventDate", "eventTime", "eventCapacity", "eventDescription"].forEach(id => {
         const field = document.getElementById(id);
