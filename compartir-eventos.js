@@ -284,8 +284,8 @@
         }else{
             if(ratio>=.75&&ratio<=1.25)score+=10;else if(ratio<.75)score+=4;else score-=8;
             if(/monstruo|boss|jefe|personaje|reina|minotot|vortex|kontatras|sombra/i.test(title))score+=8;
-            if(/\\.png$/i.test(page.title))score+=12;
-            else if(/\\.(jpe?g|webp)$/i.test(page.title))score-=6;
+            if(/\.png$/i.test(page.title))score+=12;
+            else if(/\.(jpe?g|webp)$/i.test(page.title))score-=6;
             if(/dungeon rusher|captura|zona|mazmorra|mapa|paisaje|fondo|sala/i.test(title))score-=5;
             if(width>=300)score+=3;
         }
