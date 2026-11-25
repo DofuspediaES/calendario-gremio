@@ -810,10 +810,10 @@
         ctx.fillStyle="rgba(10,12,16,.16)";ctx.fillRect(0,0,size,size);
         const bosses=state.bosses.filter(Boolean).slice(0,3),count=bosses.length;
         bosses.forEach((boss,index)=>{
-            const slotWidth=count===1?size*.86:size/count*.92,maxHeight=size*.88;
+            const slotWidth=count===1?size*.66:size/count*.88,maxHeight=size*.88;
             const scale=Math.min(slotWidth/boss.width,maxHeight/boss.height);
             const width=boss.width*scale,height=boss.height*scale;
-            const slotX=count===1?(size-slotWidth)/2:index*(size/count)+(size/count-slotWidth)/2;
+            const slotX=count===1?size*.32:index*(size/count)+(size/count-slotWidth)/2;
             const x=slotX+(slotWidth-width)/2,y=(size-height)/2+size*.025;
             ctx.save();ctx.shadowColor="rgba(0,0,0,.72)";ctx.shadowBlur=18;ctx.shadowOffsetY=6;
             ctx.drawImage(boss,x,y,width,height);ctx.restore();
