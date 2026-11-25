@@ -2789,6 +2789,12 @@ if (eventForm) {
                 );
                 window.__calendarNewEventId = data.id;
                 window.EventImageEditor?.promoteDraft(data);
+                let discordThumbnailBase64 = null;
+                try {
+                    discordThumbnailBase64 = await window.EventImageEditor?.exportDiscordThumbnail(data.id) || null;
+                } catch (imageError) {
+                    console.warn("⚠️ No se pudo preparar la miniatura de Discord:", imageError);
+                }
 
                 // ====================================
 // APUNTAR AUTOMÁTICAMENTE AL CREADOR
@@ -2850,7 +2856,8 @@ if (participantError) {
                         {
                             body: {
     ...data,
-    player_name: currentProfile?.player_name || null
+    player_name: currentProfile?.player_name || null,
+    thumbnail_base64: discordThumbnailBase64
 }
                         }
                     );
