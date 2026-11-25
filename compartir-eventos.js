@@ -687,7 +687,7 @@
         state.imageSearchPromise=pending;
         try{
             const found=await pending;
-            if(sequence!==draftSearchSequence||!previewStates.has("__draft__"))return;
+            if(sequence!==draftSearchSequence||![...previewStates.values()].includes(state))return;
             state.background=found.background?.url?await loadCanvasImage(found.background.url,found.background.fallbackUrl,found.background.width,found.background.height):null;
             state.bosses=[];
             for(const boss of found.bosses||[]){try{state.bosses.push(await loadCanvasImage(boss.url,boss.fallbackUrl,boss.width,boss.height))}catch(error){console.warn("No se pudo cargar la imagen del jefe:",error)}}
