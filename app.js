@@ -2790,10 +2790,22 @@ if (eventForm) {
                 window.__calendarNewEventId = data.id;
                 window.EventImageEditor?.promoteDraft(data);
                 let discordThumbnailBase64 = null;
+                let discordThumbnailUrl = null;
                 try {
                     discordThumbnailBase64 = await window.EventImageEditor?.exportDiscordThumbnail(data.id) || null;
+                    if (discordThumbnailBase64) {
+                        const { data: thumbnailData, error: thumbnailError } = await supabaseClient.functions.invoke("discord-event", {
+                            body: {
+                                action: "upload_thumbnail",
+                                event_id: data.id,
+                                thumbnail_base64: discordThumbnailBase64
+                            }
+                        });
+                        if (thumbnailError) throw thumbnailError;
+                        discordThumbnailUrl = thumbnailData?.url || null;
+                    }
                 } catch (imageError) {
-                    console.warn("⚠️ No se pudo preparar la miniatura de Discord:", imageError);
+                    console.warn("⚠️ No se pudo preparar o subir la miniatura de Discord:", imageError);
                 }
 
                 // ====================================
@@ -2857,7 +2869,7 @@ if (participantError) {
                             body: {
     ...data,
     player_name: currentProfile?.player_name || null,
-    thumbnail_base64: discordThumbnailBase64
+    discord_thumbnail_url: discordThumbnailUrl
 }
                         }
                     );
